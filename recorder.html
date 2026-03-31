@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen Recorder</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+
+    :root {
+      --bg: #08080d;
+      --bg2: #101018;
+      --bg3: #181824;
+      --bg4: #1e1e30;
+      --accent: #f24c5e;
+      --accent-g: rgba(242,76,94,0.25);
+      --green: #34d399;
+      --green-g: rgba(52,211,153,0.25);
+      --yellow: #fbbf24;
+      --yellow-g: rgba(251,191,36,0.25);
+      --text: #e4e4ef;
+      --text2: #8888a4;
+      --text3: #55556a;
+      --border: #252538;
+      --r: 14px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 420px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    /* Header */
+    .hdr {
+      display: flex; align-items: center; gap: 12px;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hdr-icon {
+      width: 38px; height: 38px;
+      background: rgba(242,76,94,0.1);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hdr-icon svg { width: 20px; height: 20px; fill: var(--accent); }
+    .hdr h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+    .hdr p { font-size: 12px; color: var(--text3); font-weight: 500; }
+
+    /* Mode toggle */
+    .modes { padding: 20px 24px 0; }
+    .modes-label {
+      font-size: 11px; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px;
+    }
+    .modes-row {
+      display: flex; gap: 0; background: var(--bg);
+      border-radius: var(--r); padding: 4px; border: 1px solid var(--border);
+    }
+    .mbtn {
+      flex: 1; padding: 11px; border: none; background: transparent;
+      color: var(--text2); font-family: inherit; font-size: 13px; font-weight: 600;
+      border-radius: 10px; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .mbtn:hover { color: var(--text); }
+    .mbtn.on { background: var(--bg3); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+    .mbtn svg { width: 16px; height: 16px; }
+
+    /* Sections */
+    .sec { padding: 20px 24px; }
+
+    /* Timer */
+    .timer-area { text-align: center; padding: 28px 24px 20px; }
+    .timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 56px; font-weight: 700; letter-spacing: 3px;
+      line-height: 1; margin-bottom: 8px; transition: 0.3s;
+    }
+    .timer.rec { color: var(--accent); text-shadow: 0 0 40px var(--accent-g); }
+    .timer.pau { color: var(--yellow); text-shadow: 0 0 40px var(--yellow-g); animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.35; } }
+
+    .status {
+      font-size: 12px; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 2px;
+    }
+    .status.rec { color: var(--accent); }
+    .status.pau { color: var(--yellow); }
+
+    .dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); margin-right: 7px; vertical-align: middle;
+      animation: pdot 1.2s infinite;
+    }
+    @keyframes pdot { 50% { opacity: 0.4; transform: scale(1.4); } }
+
+    /* Waveform */
+    .wave { display: flex; align-items: center; justify-content: center; gap: 3px; height: 28px; margin-top: 12px; }
+    .wave.off { opacity: 0; }
+    .wb {
+      width: 3.5px; height: 5px; border-radius: 2px; background: var(--accent);
+      animation: w 0.8s ease-in-out infinite;
+    }
+    .wb:nth-child(1){animation-delay:0s} .wb:nth-child(2){animation-delay:.1s}
+    .wb:nth-child(3){animation-delay:.2s} .wb:nth-child(4){animation-delay:.3s}
+    .wb:nth-child(5){animation-delay:.15s} .wb:nth-child(6){animation-delay:.25s}
+    .wb:nth-child(7){animation-delay:.05s} .wb:nth-child(8){animation-delay:.12s}
+    .wb:nth-child(9){animation-delay:.22s}
+    @keyframes w { 0%,100%{height:5px} 50%{height:24px} }
+    .wave.pau .wb { animation-play-state: paused; background: var(--yellow); }
+
+    /* Buttons */
+    .btns { display: flex; gap: 10px; padding: 0 24px 24px; flex-wrap: wrap; }
+    .btn {
+      flex: 1; padding: 13px 16px; border: none; border-radius: var(--r);
+      font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+    }
+    .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .btn1 { background: var(--accent); color: #fff; box-shadow: 0 4px 20px var(--accent-g); }
+    .btn1:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--accent-g); }
+    .btn2 { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+    .btn2:hover { background: var(--bg4); color: var(--text); }
+    .btn-stop { background: var(--bg3); color: var(--accent); border: 1px solid rgba(242,76,94,0.3); }
+    .btn-stop:hover { background: rgba(242,76,94,0.08); }
+    .btn-dl { background: linear-gradient(135deg, #34d399, #059669); color: #fff; box-shadow: 0 4px 20px var(--green-g); }
+    .btn-dl:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--green-g); }
+    .btn-dl-mp3 { background: linear-gradient(135deg, #34d399, #059669); color: #fff; box-shadow: 0 4px 20px var(--green-g); }
+    .btn-dl-mp3:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--green-g); }
+    .btn:disabled { opacity: 0.35; cursor: default; transform: none !important; box-shadow: none !important; }
+
+    /* Info card */
+    .info {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin: 0 24px 18px; padding: 12px 14px;
+      background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.15);
+      border-radius: 10px; font-size: 12px; color: var(--green); line-height: 1.5;
+    }
+    .info svg { flex-shrink: 0; margin-top: 1px; }
+    .info b { color: #6ee7b7; }
+
+    .err {
+      margin: 0 24px 14px; padding: 11px 14px;
+      background: rgba(242,76,94,0.08); border: 1px solid rgba(242,76,94,0.25);
+      border-radius: 10px; font-size: 12px; color: var(--accent); line-height: 1.4;
+      display: none;
+    }
+    .err.on { display: block; }
+
+    .warn {
+      margin: 0 24px 14px; padding: 11px 14px;
+      background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 10px; font-size: 12px; color: var(--yellow); line-height: 1.4;
+      display: none;
+    }
+    .warn.on { display: block; }
+
+    /* Done card */
+    .done-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 16px 18px; margin: 0 24px 16px;
+    }
+    .done-card h3 { font-size: 14px; color: var(--green); margin-bottom: 4px; }
+    .done-card p { font-size: 12px; color: var(--text3); }
+
+    /* Views */
+    .v { display: none; }
+    .v.on { display: block; }
+
+    .foot {
+      padding: 14px 24px; border-top: 1px solid var(--border); text-align: center;
+    }
+    .foot span { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
+
+    /* Log area for debug */
+    .log-area {
+      max-height: 0; overflow: hidden; transition: max-height 0.3s;
+      margin: 0 24px; font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--text3); line-height: 1.6;
+    }
+    .log-area.open { max-height: 200px; overflow-y: auto; padding-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- ===== IDLE ===== -->
+    <div id="v-idle" class="v on">
+      <div class="hdr">
+        <div class="hdr-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></div>
+        <div><h1>Screen Recorder</h1><p>Grave tela + áudio (Meet, YouTube, etc.)</p></div>
+      </div>
+      <div class="modes">
+        <div class="modes-label">Modo</div>
+        <div class="modes-row">
+          <button class="mbtn on" data-m="video">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Vídeo + Áudio
+          </button>
+          <button class="mbtn" data-m="audio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            Só Áudio
+          </button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Ao clicar em gravar, o Chrome abrirá um seletor. Escolha a <b>aba ou tela</b>. O áudio do sistema será capturado automaticamente.</span>
+        </div>
+        <div id="err" class="err"></div>
+      </div>
+      <div class="btns">
+        <button id="btn-start" class="btn btn1">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+          Iniciar Gravação
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== RECORDING ===== -->
+    <div id="v-rec" class="v">
+      <div class="hdr">
+        <div class="hdr-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></div>
+        <div><h1>Screen Recorder</h1><p>Gravando...</p></div>
+      </div>
+      <div class="timer-area">
+        <div id="timer" class="timer rec">00:00</div>
+        <div id="st" class="status rec"><span class="dot"></span>Gravando</div>
+        <div id="wave" class="wave">
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+        </div>
+      </div>
+      <div id="warn" class="warn"></div>
+      <div class="btns">
+        <button id="btn-pause" class="btn btn2">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          Pausar
+        </button>
+        <button id="btn-stop" class="btn btn-stop">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          Parar
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== DONE ===== -->
+    <div id="v-done" class="v">
+      <div class="hdr">
+        <div class="hdr-icon" style="background:rgba(52,211,153,0.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><h1>Gravação Concluída</h1><p id="done-sub">Pronto para download</p></div>
+      </div>
+      <div class="done-card">
+        <h3 id="done-label">Vídeo + Áudio</h3>
+        <p id="done-dur">Duração: --:--</p>
+      </div>
+      <div class="btns">
+        <button id="btn-dl" class="btn btn-dl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar .webm
+        </button>
+        <button id="btn-dl-mp3" class="btn btn-dl-mp3" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar .mp3
+        </button>
+        <button id="btn-discard" class="btn btn2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          Descartar
+        </button>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>v4 · WebM · desktopCapture + getUserMedia · System Audio</span>
+      <span id="toggle-log" style="cursor:pointer;margin-left:8px;color:var(--text3)">▸ log</span>
+    </div>
+    <div id="log" class="log-area"></div>
+  </div>
+
+  <script src="lib/lame.min.js"></script>
+  <script src="recorder.js"></script>
+</body>
+</html>

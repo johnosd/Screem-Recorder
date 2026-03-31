@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl:*)",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri ''https://raw.githubusercontent.com/zhuker/lamejs/master/lame.min.js'' -OutFile ''C:/Users/johns/Documents/Projetos/screen recorder/lib/lame.min.js''\")",
+      "Bash(powershell -Command \"\nNew-Item -ItemType Directory -Force -Path 'C:\\\\Users\\\\johns\\\\Documents\\\\Projetos\\\\screen recorder\\\\lib' | Out-Null\nInvoke-WebRequest -Uri 'https://raw.githubusercontent.com/zhuker/lamejs/master/lame.min.js' -OutFile 'C:\\\\Users\\\\johns\\\\Documents\\\\Projetos\\\\screen recorder\\\\lib\\\\lame.min.js' -UseBasicParsing\nWrite-Host \\('Size: ' + \\(Get-Item 'C:\\\\Users\\\\johns\\\\Documents\\\\Projetos\\\\screen recorder\\\\lib\\\\lame.min.js'\\).Length + ' bytes'\\)\n\")",
+      "Bash(powershell -Command \"Test-Path 'C:\\\\Users\\\\johns\\\\Documents\\\\Projetos\\\\screen recorder\\\\lib\\\\lame.min.js'\")",
+      "Bash(powershell -Command \"Write-Host \\(Test-Path 'C:\\\\Users\\\\johns\\\\Documents\\\\Projetos\\\\screen recorder\\\\lib\\\\lame.min.js'\\)\")",
+      "Bash(cmd /c echo hello)"
+    ]
+  }
+}
