@@ -1,97 +1,156 @@
-# 🔴 Screen & Audio Recorder — Extensão Chrome
+# Screen & Audio Recorder
 
-Extensão Chrome (Manifest V3) para gravar a tela e áudio da aba atual, com timer visível e opção de pausar/retomar.
+Extensão Chrome (Manifest V3) para gravar tela e áudio com transcrição em tempo real.
 
 ---
 
-## 📦 Instalação
+## Funcionalidades
 
-1. **Descompacte** o arquivo `screen-recorder-extension.zip` em uma pasta no seu computador
-2. Abra o Chrome e vá para `chrome://extensions/`
+- Grava **tela + áudio do sistema** (Meet, YouTube, etc.) ou **só áudio**
+- **Microfone opcional** — mixado automaticamente com o áudio do sistema
+- **Pausa / retomada** durante a gravação
+- **Auto-minimiza** ao iniciar e **auto-restaura** ao parar — a janela nunca aparece no que você compartilha
+- Download em **.webm** (vídeo) ou **.mp3** (áudio, via conversão local)
+- **Transcrição em tempo real** via Deepgram (~300ms de latência)
+- Download da transcrição em **.txt** (texto corrido) ou **.srt** (legendas sincronizadas com o vídeo)
+
+---
+
+## Build
+
+O projeto usa Webpack para empacotar os fontes de `src/` para `dist/`.
+
+```bash
+npm install        # instala dependências (só na primeira vez)
+npm run build      # compila uma vez
+npm run dev        # recompila automaticamente ao salvar
+```
+
+> **Não edite `dist/` manualmente** — tudo que está lá é gerado pelo build.
+
+---
+
+## Instalação
+
+1. Rode `npm run build` para gerar a pasta `dist/`
+2. Abra `chrome://extensions/`
 3. Ative o **Modo de desenvolvedor** (toggle no canto superior direito)
-4. Clique em **"Carregar sem compactação"** (Load unpacked)
-5. Selecione a pasta `screen-recorder-extension`
-6. Pronto! O ícone 🔴 aparecerá na barra de extensões
+4. Clique em **Carregar sem compactação** e selecione a raiz deste repositório
+5. O ícone aparece na barra de extensões
+
+Após qualquer alteração no código, rode `npm run build` e clique em **recarregar** na página de extensões.
 
 ---
 
-## 🎬 Como Usar
+## Como usar
 
 ### Gravar
-1. Navegue até a aba que deseja gravar
-2. Clique no ícone da extensão
-3. Escolha o modo: **Vídeo + Áudio** ou **Só Áudio**
-4. Clique em **"Iniciar Gravação"**
-5. O Chrome pedirá permissão — confirme
 
-### Durante a Gravação
-- O **timer** mostra o tempo decorrido em tempo real
-- Use **Pausar** para interromper temporariamente (o timer pisca em amarelo)
-- Use **Retomar** para continuar a gravação
-- Clique em **Parar** quando terminar
+1. Clique no ícone da extensão — uma janela separada abre (não uma aba)
+2. Escolha o modo: **Vídeo + Áudio** ou **Só Áudio**
+3. Clique em **Iniciar Gravação**
+4. O Chrome abre o seletor nativo — escolha a tela, janela ou aba
+5. A janela minimiza automaticamente; a gravação corre em background
+6. Para pausar ou parar, clique no ícone da extensão para restaurar a janela
 
-### Baixar
-- Após parar, clique em **"Baixar .webm"** para salvar o arquivo
-- Ou clique em **"Descartar"** para apagar a gravação
+### Transcrição (opcional)
+
+A transcrição usa a [API do Deepgram](https://deepgram.com) — plano gratuito inclui 200 horas/mês.
+
+**Configuração inicial (uma vez):**
+
+1. Crie conta em deepgram.com → Console → API Keys → Create Key
+2. Na extensão, marque o toggle **Transcrição em tempo real**
+3. Cole a API key e clique em **Salvar** — a key é validada e armazenada localmente
+
+**Durante a gravação:** o texto aparece ao vivo no painel da extensão.
+
+**Após parar:** dois botões de download ficam disponíveis:
+- **Baixar .txt** — transcrição corrida em texto plano
+- **Baixar .srt** — legendas com timecodes, salvas com o mesmo nome do vídeo para carregamento automático em players como VLC e MPV
 
 ---
 
-## 🔧 Detalhes Técnicos
+## Estrutura
+
+```
+screen-recorder/
+├── src/
+│   ├── recorder.js          # lógica principal: captura, áudio, transcrição, download
+│   ├── background.js        # service worker — único contexto que pode chamar desktopCapture
+│   ├── popup.js             # abre a janela do gravador (ou restaura se já aberta)
+│   ├── audio-processor.js   # AudioWorkletProcessor — coleta PCM para o Deepgram
+│   └── utils/
+│       └── timer.js         # formata mm:ss
+├── dist/                    # gerado pelo webpack — não editar
+├── lib/
+│   └── lame.min.js          # encoder MP3 (roda no browser)
+├── recorder.html            # UI principal — todos os estados (idle / rec / done)
+├── popup.html               # HTML mínimo do popup do ícone
+├── manifest.json
+├── webpack.config.js
+└── package.json
+```
+
+---
+
+## Arquitetura
+
+```
+Clique no ícone
+      ↓
+  popup.js → chrome.windows.create (janela popup separada)
+      ↓
+  recorder.html carrega
+      ↓
+  "request-desktop-capture" → background.js
+      ↓
+  chrome.desktopCapture.chooseDesktopMedia() → streamId
+      ↓
+  getUserMedia (chromeMediaSource: desktop)
+      ↓
+  Web Audio API — mix de sistema + microfone
+      ↓
+  ┌─────────────────────┬──────────────────────────┐
+  │   MediaRecorder     │   AudioWorklet (PCM)      │
+  │   → chunks[]        │   → WebSocket Deepgram    │
+  │   → .webm / .mp3    │   → .txt / .srt           │
+  └─────────────────────┴──────────────────────────┘
+```
+
+---
+
+## Detalhes técnicos
 
 | Item | Detalhe |
 |------|---------|
 | Manifest | V3 |
-| Formato | WebM (VP9 + Opus) |
-| Captura | `chrome.tabCapture` API |
-| Áudio | Tab audio + Microfone (mixados) |
-| Gravação | `MediaRecorder` API via Offscreen Document |
+| Formato de vídeo | WebM (VP9 + Opus) |
 | Bitrate vídeo | 5 Mbps |
 | Bitrate áudio | 128 kbps |
+| Resolução máxima | 1920 × 1080 @ 30fps |
+| Transcrição | Deepgram nova-2, ~300ms latência |
+| Áudio enviado | PCM linear16, mono, 16kHz |
+| Armazenamento | `chrome.storage.local` (API key) |
 
-### Permissões Utilizadas
-- `tabCapture` — capturar áudio/vídeo da aba
-- `offscreen` — contexto DOM para MediaRecorder
-- `storage` — salvar preferências (futuro)
+### Permissões
 
----
-
-## 📁 Estrutura de Arquivos
-
-```
-screen-recorder-extension/
-├── manifest.json        # Configuração da extensão
-├── background.js        # Service worker (gerencia estado)
-├── offscreen.html       # Documento offscreen (shell)
-├── offscreen.js         # MediaRecorder (gravação real)
-├── popup.html           # Interface do usuário
-├── popup.js             # Lógica da interface
-├── icons/
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md
-```
+| Permissão | Uso |
+|-----------|-----|
+| `desktopCapture` | seletor nativo para capturar tela/aba/janela |
+| `tabs` | detectar se a janela do gravador já está aberta |
+| `activeTab` | contexto da aba ativa |
+| `windows` | abrir como popup e controlar minimizar/restaurar |
+| `storage` | salvar a API key do Deepgram localmente |
 
 ---
 
-## ⚠️ Limitações
+## Limitações
 
-- **Somente grava a aba atual** (não grava tela inteira/desktop)
-- O arquivo é **WebM** (reproduzível no Chrome, VLC, Firefox). Para MP4, converta com ffmpeg:
+- **Só Chrome** — `desktopCapture` não está disponível em outros navegadores
+- **Transcrição requer internet** durante a gravação (áudio é enviado ao Deepgram)
+- **Um único fluxo de texto** — o Deepgram não separa vozes; o SRT reflete os segmentos finais sem diarização
+- Para converter o WebM para MP4:
   ```bash
   ffmpeg -i gravacao.webm -c:v libx264 -c:a aac gravacao.mp4
   ```
-- O microfone é opcional: se não houver permissão, grava apenas o áudio da aba
-- O popup precisa estar aberto para ver o timer (a gravação continua em background mesmo fechando)
-
----
-
-## 🎨 Personalização
-
-A interface usa CSS variables facilmente editáveis em `popup.html`:
-
-```css
---accent: #f24c5e;      /* Cor principal (vermelho) */
---green: #34d399;        /* Cor do botão download */
---bg-primary: #0a0a0f;  /* Fundo escuro */
-```

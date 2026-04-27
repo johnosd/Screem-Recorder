@@ -4,6 +4,7 @@
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'request-desktop-capture') {
+    log('message received', { action: msg.action });
     (async () => {
       try {
         const sources = ['screen', 'window', 'tab', 'audio'];
@@ -33,14 +34,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             sendResponse({ error: 'cancelled' });
             return;
           }
-          console.log('[BG] desktopCapture streamId obtained');
+          log('stream id obtained', { streamId: streamId.slice(0, 20) });
           sendResponse({ streamId });
         }
 
       } catch (err) {
+        log('error', { message: err.message });
         sendResponse({ error: err.message });
       }
     })();
     return true; // async sendResponse
   }
 });
+
+// src/background.js
+function log(action, data = {}) {
+  console.log(`[BG] ${action}`, data)
+}

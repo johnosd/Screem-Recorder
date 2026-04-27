@@ -6,7 +6,13 @@
   "permissions": [
     "desktopCapture",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "windows",
+    "storage"
+  ],
+  "host_permissions": [
+    "wss://api.deepgram.com/*",
+    "https://api.deepgram.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -22,6 +28,6 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "dist/background.bundle.js"
   }
 }

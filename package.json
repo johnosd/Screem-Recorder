@@ -1,0 +1,35 @@
+{
+  "name": "screen-recorder",
+  "version": "1.0.0",
+  "description": "Extensão Chrome (Manifest V3) para gravar a tela e áudio do sistema, com timer, pausa/retomada e modo invisível durante screen share.",
+  "main": "audio-processor.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "build": "webpack",
+    "dev": "webpack --watch",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnosd/Screem-Recorder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/johnosd/Screem-Recorder/issues"
+  },
+  "homepage": "https://github.com/johnosd/Screem-Recorder#readme",
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.2",
+    "babel-jest": "^30.3.0",
+    "copy-webpack-plugin": "^14.0.0",
+    "jest": "^30.3.0",
+    "webpack": "^5.106.2",
+    "webpack-cli": "^7.0.2"
+  }
+}
