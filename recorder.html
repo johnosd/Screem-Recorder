@@ -189,6 +189,92 @@
     }
     .foot span { font-size: 10px; color: var(--text3); letter-spacing: 0.5px; }
 
+    .hidden { display: none !important; }
+
+    /* Transcript config (idle) */
+    .transcript-config {
+      margin: 0 24px 16px;
+      padding: 14px 16px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+    .toggle-label {
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2);
+      user-select: none;
+    }
+    .toggle-label input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+    .api-key-row {
+      margin-top: 12px; display: flex; gap: 8px;
+    }
+    .api-key-row input {
+      flex: 1; padding: 8px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: inherit; font-size: 12px; outline: none;
+    }
+    .api-key-row input:focus { border-color: var(--accent); }
+    .btn-save-key {
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg4); color: var(--text2); font-family: inherit;
+      font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: color 0.2s;
+    }
+    .btn-save-key:hover { color: var(--text); }
+    .lang-row {
+      display: flex; gap: 6px; margin-top: 10px;
+    }
+    .lbtn {
+      flex: 1; padding: 7px 0; border: 1px solid var(--border);
+      background: transparent; color: var(--text3); font-family: inherit;
+      font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .lbtn:hover { color: var(--text); }
+    .lbtn.on { background: var(--bg4); color: var(--text); border-color: var(--accent); }
+    .key-status {
+      margin-top: 8px; font-size: 11px; font-weight: 600;
+      padding: 5px 10px; border-radius: 8px; line-height: 1.4;
+    }
+    .key-status.ok  { color: var(--green); background: var(--green-g); }
+    .key-status.err { color: var(--accent); background: var(--accent-g); }
+    .key-status.checking { color: var(--text3); }
+
+    /* Transcript live panel (rec) */
+    .transcript-panel {
+      margin: 0 24px 12px;
+      background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
+    }
+    .transcript-panel-hdr {
+      padding: 6px 12px; font-size: 10px; font-weight: 700;
+      color: var(--text3); text-transform: uppercase; letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+    }
+    .transcript-live {
+      padding: 10px 12px; max-height: 90px; overflow-y: auto;
+      font-size: 12px; color: var(--text2); line-height: 1.6; min-height: 36px;
+    }
+
+    /* Transcript done block */
+    .transcript-done-block {
+      margin: 0 24px 14px;
+      background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
+    }
+    .transcript-done-hdr {
+      padding: 6px 12px; font-size: 10px; font-weight: 700;
+      color: var(--text3); text-transform: uppercase; letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+    }
+    .transcript-preview {
+      padding: 10px 12px; max-height: 72px; overflow-y: auto;
+      font-size: 12px; color: var(--text2); line-height: 1.6;
+    }
+    .btn-dl-txt {
+      display: block; width: 100%; padding: 10px; border: none;
+      background: transparent; color: var(--text2); font-family: inherit;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      border-top: 1px solid var(--border); transition: background 0.2s, color 0.2s;
+    }
+    .btn-dl-txt:hover { background: var(--bg4); color: var(--text); }
+
     /* Log area for debug */
     .log-area {
       max-height: 0; overflow: hidden; transition: max-height 0.3s;
@@ -227,6 +313,21 @@
         </div>
         <div id="err" class="err"></div>
       </div>
+      <div class="transcript-config">
+        <label class="toggle-label">
+          <input type="checkbox" id="toggle-transcript">
+          <span>Transcrição em tempo real</span>
+        </label>
+        <div id="lang-row" class="lang-row hidden">
+          <button class="lbtn on" data-lang="pt-BR">PT-BR</button>
+          <button class="lbtn" data-lang="en">EN</button>
+        </div>
+        <div id="api-key-row" class="api-key-row">
+          <input type="password" id="input-api-key" placeholder="Deepgram API Key">
+          <button id="btn-save-key" class="btn-save-key">Salvar</button>
+        </div>
+        <div id="key-status" class="key-status hidden"></div>
+      </div>
       <div class="btns">
         <button id="btn-start" class="btn btn1">
           <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
@@ -249,6 +350,10 @@
           <div class="wb"></div><div class="wb"></div><div class="wb"></div>
           <div class="wb"></div><div class="wb"></div><div class="wb"></div>
         </div>
+      </div>
+      <div id="transcript-panel" class="transcript-panel hidden">
+        <div class="transcript-panel-hdr">Transcrição ao vivo</div>
+        <div id="transcript-live" class="transcript-live"></div>
       </div>
       <div id="warn" class="warn"></div>
       <div class="btns">
@@ -275,6 +380,12 @@
         <h3 id="done-label">Vídeo + Áudio</h3>
         <p id="done-dur">Duração: --:--</p>
       </div>
+      <div id="transcript-done-block" class="transcript-done-block hidden">
+        <div class="transcript-done-hdr">Transcrição</div>
+        <div id="transcript-preview" class="transcript-preview"></div>
+        <button id="btn-dl-txt" class="btn-dl-txt">↓ Baixar .txt</button>
+        <button id="btn-dl-srt" class="btn-dl-txt">↓ Baixar .srt</button>
+      </div>
       <div class="btns">
         <button id="btn-dl" class="btn btn-dl">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -299,6 +410,6 @@
   </div>
 
   <script src="lib/lame.min.js"></script>
-  <script src="recorder.js"></script>
+  <script src="dist/recorder.bundle.js"></script>
 </body>
 </html>
