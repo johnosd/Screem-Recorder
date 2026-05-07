@@ -83,6 +83,13 @@ btnStart.addEventListener('click', async () => {
   btnStart.textContent = 'Abrindo seletor...';
   errEl.classList.remove('on');
 
+  // Minimize before the picker opens so the window is never visible in the capture
+  await new Promise(resolve => {
+    chrome.windows.getCurrent(win => {
+      chrome.windows.update(win.id, { state: 'minimized' }, resolve);
+    });
+  });
+
   try {
     // 1. Ask background to open desktopCapture picker
     log('Requesting desktopCapture picker...');
@@ -96,6 +103,9 @@ btnStart.addEventListener('click', async () => {
     if (res.error) {
       if (res.error === 'cancelled') {
         log('User cancelled picker');
+        chrome.windows.getCurrent(win => {
+          chrome.windows.update(win.id, { state: 'normal', focused: true });
+        });
         resetStart();
         return;
       }
@@ -153,6 +163,7 @@ btnStart.addEventListener('click', async () => {
 
       if (aTracks.length > 0) {
         audioCtx = new AudioContext({ sampleRate: 48000 });
+        await audioCtx.resume();
         const dest = audioCtx.createMediaStreamDestination();
 
         const sysSrc = audioCtx.createMediaStreamSource(new MediaStream(aTracks));
@@ -178,6 +189,12 @@ btnStart.addEventListener('click', async () => {
       log('Mic not available: ' + micErr.message);
       if (aTracks.length === 0 && mode === 'audio') {
         throw new Error('Sem áudio do sistema e sem microfone disponível');
+      }
+      if (aTracks.length > 0) {
+        const tracks = [...aTracks];
+        if (mode === 'video') tracks.push(...vTracks);
+        finalStream = new MediaStream(tracks);
+        log('Using system audio only (mic unavailable)');
       }
     }
 
@@ -229,10 +246,6 @@ btnStart.addEventListener('click', async () => {
     log('✅ Recording started!');
     if (transcriptEnabled) startTranscription(finalStream);
 
-    chrome.windows.getCurrent(win => {
-      chrome.windows.update(win.id, { state: 'minimized' });
-    });
-
     // 5. UI
     view('rec');
     warnEl.classList.remove('on');
@@ -255,6 +268,9 @@ btnStart.addEventListener('click', async () => {
     log('❌ Start failed: ' + err.message);
     showErr(err.message);
     cleanup();
+    chrome.windows.getCurrent(win => {
+      chrome.windows.update(win.id, { state: 'normal', focused: true });
+    });
   }
 
   resetStart();
