@@ -1,58 +1,30 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Orientações para trabalhar neste repositório. Consulte também `README.md` para as funcionalidades e o fluxo de uso atuais.
 
-## Project Overview
+## Projeto
 
-Chrome Extension (Manifest V3) for recording screen and audio. No build system, no dependencies — pure vanilla JavaScript loaded directly as an unpacked extension.
+Extensão Chrome Manifest V3 para gravar tela e áudio, com microfone opcional e transcrição opcional via Deepgram. O código-fonte JavaScript fica em `src/`; o Webpack gera os bundles em `dist/`.
 
-## Loading the Extension
+## Build e validação
 
-1. Open `chrome://extensions/` in Chrome
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked** and select this directory
-4. After any code change, click the **reload icon** on the extension card
-
-There are no build, lint, or test commands.
-
-## Architecture
-
-```
-User clicks icon → popup.html/popup.js → opens recorder.html in a new tab
-                                              ↓
-                                        recorder.js sends "request-desktop-capture" message
-                                              ↓
-                                        background.js (Service Worker) calls Chrome desktopCapture API
-                                              ↓
-                                        recorder.js gets streamId → getUserMedia → Web Audio API mixing → MediaRecorder → WebM download
+```bash
+npm install
+npm test
+npm run build
 ```
 
-### File Roles
+O projeto tem testes Jest e comandos de teste e build no `package.json`. Não há script de lint nem de type-check declarado. Não edite `dist/` manualmente.
 
-| File | Role |
-|------|------|
-| `popup.html/js` | Extension entry point — opens recorder tab and closes itself |
-| `background.js` | Service Worker; handles `desktopCapture.chooseDesktopMedia()` (must run in service worker context) |
-| `recorder.html` | Main UI — contains all CSS (CSS variables, dark theme) and HTML states |
-| `recorder.js` | Core logic: stream capture, audio mixing, MediaRecorder lifecycle, timer, download |
+Para verificar comportamento no Chrome, rode o build, carregue a raiz deste repositório em `chrome://extensions/` como extensão sem compactação e recarregue a extensão após mudanças. Testes Jest e build não substituem a verificação dos fluxos de captura, permissões, áudio e transcrição no Chrome.
 
-### Recording Pipeline
+## Arquitetura
 
-1. `background.js` receives `request-desktop-capture` message, opens Chrome's native picker
-2. `recorder.js` receives `streamId`, calls `getUserMedia` with `chromeMediaSource: 'desktop'`
-3. Optionally mixes microphone via Web Audio API (`AudioContext` + `createGain`)
-4. `MediaRecorder` records the final stream into `chunks[]`
-5. On stop: creates a Blob, triggers download as `.webm`
+- `src/popup.js` abre ou restaura a janela do gravador.
+- `src/background.js` é o service worker que solicita a captura de tela.
+- `src/recorder.js` coordena captura, mixagem de áudio, gravação, transcrição e downloads.
+- `src/audio-processor.js` processa PCM para a transcrição.
+- `recorder.html` e `popup.html` definem as interfaces da extensão.
+- `manifest.json` declara permissões, páginas e service worker.
 
-### UI States (controlled by `data-view` on `<body>`)
-
-- `v-idle` — mode selection (Video+Audio or Audio-only)
-- `v-rec` — active recording (live timer, pause/stop)
-- `v-done` — post-recording (download or discard)
-
-## Key Technical Constraints
-
-- **desktopCapture API** requires a service worker context — this is why `background.js` exists; `recorder.js` cannot call it directly.
-- Output format is always **WebM** (VP9 video, Opus audio). Use ffmpeg to convert to MP4 if needed.
-- Recording specs: 5 Mbps video, 128 kbps audio, up to 1920×1080 @ 30fps.
-- Microphone is optional — silently falls back to system audio only if unavailable.
+O fluxo de gravação usa o seletor nativo do Chrome, `getUserMedia`, Web Audio API e `MediaRecorder`. A transcrição envia áudio ao Deepgram quando ativada; trate a chave da API como dado sensível e não a registre em código, logs ou relatórios.

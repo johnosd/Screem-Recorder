@@ -4,7 +4,6 @@
   "version": "4.0.0",
   "description": "Grave sua tela com áudio do sistema + microfone. Funciona com Meet, YouTube, etc.",
   "permissions": [
-    "desktopCapture",
     "tabs",
     "activeTab",
     "windows",

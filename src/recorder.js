@@ -83,7 +83,7 @@ btnStart.addEventListener('click', async () => {
   btnStart.textContent = 'Abrindo seletor...';
   errEl.classList.remove('on');
 
-  // Minimize before the picker opens so the window is never visible in the capture
+  // Minimize before the picker opens so this window isn't visible in the capture
   await new Promise(resolve => {
     chrome.windows.getCurrent(win => {
       chrome.windows.update(win.id, { state: 'minimized' }, resolve);
@@ -91,56 +91,18 @@ btnStart.addEventListener('click', async () => {
   });
 
   try {
-    // 1. Ask background to open desktopCapture picker
-    log('Requesting desktopCapture picker...');
-    const res = await chrome.runtime.sendMessage({ action: 'request-desktop-capture' });
+    log('Requesting display capture...');
 
-    log('Picker response: ' + JSON.stringify(res));
-
-    if (!res) {
-      throw new Error('Sem resposta do background. Recarregue a extensão.');
-    }
-    if (res.error) {
-      if (res.error === 'cancelled') {
-        log('User cancelled picker');
-        chrome.windows.getCurrent(win => {
-          chrome.windows.update(win.id, { state: 'normal', focused: true });
-        });
-        resetStart();
-        return;
-      }
-      throw new Error(res.error);
-    }
-    if (!res.streamId) {
-      throw new Error('streamId vazio');
-    }
-
-    const streamId = res.streamId;
-    log('Got streamId: ' + streamId.substring(0, 30) + '...');
-
-    // 2. getUserMedia with chromeMediaSource:'desktop' — captures SYSTEM audio
-    log('Calling getUserMedia (chromeMediaSource: desktop)...');
-
-    const constraints = {
-      audio: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: streamId
-        }
-      }
-    };
-
-    constraints.video = {
-      mandatory: {
-        chromeMediaSource: 'desktop',
-        chromeMediaSourceId: streamId,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        maxFrameRate: 30
-      }
-    };
-
-    captureStream = await navigator.mediaDevices.getUserMedia(constraints);
+    // getDisplayMedia with selfBrowserSurface:'exclude' hides this tab from the picker
+    captureStream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        width: { max: 1920 },
+        height: { max: 1080 },
+        frameRate: { max: 30 }
+      },
+      audio: true,
+      selfBrowserSurface: 'exclude'
+    });
 
     const aTracks = captureStream.getAudioTracks();
     const vTracks = captureStream.getVideoTracks();
@@ -265,9 +227,13 @@ btnStart.addEventListener('click', async () => {
     }, 200);
 
   } catch (err) {
-    log('❌ Start failed: ' + err.message);
-    showErr(err.message);
-    cleanup();
+    if (err.name === 'NotAllowedError') {
+      log('User cancelled picker');
+    } else {
+      log('❌ Start failed: ' + err.message);
+      showErr(err.message);
+      cleanup();
+    }
     chrome.windows.getCurrent(win => {
       chrome.windows.update(win.id, { state: 'normal', focused: true });
     });
