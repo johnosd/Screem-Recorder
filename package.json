@@ -14,6 +14,8 @@
     "test:e2e:install": "node tests/e2e/run.mjs install chromium",
     "test:e2e": "npm run build && node tests/e2e/run.mjs test",
     "test:elevenlabs:live": "node --experimental-default-type=module --test tests/integration/elevenlabs-live.test.mjs",
+    "test:deepgram:live": "node --experimental-default-type=module --test tests/integration/deepgram-live.test.mjs",
+    "test:deepgram:auth": "node --experimental-default-type=module tests/integration/deepgram-live.test.mjs --auth-only",
     "test:elevenlabs:auth": "node --experimental-default-type=module tests/integration/elevenlabs-live.test.mjs --auth-only"
   },
   "repository": {

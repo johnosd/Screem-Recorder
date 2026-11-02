@@ -33,6 +33,8 @@ Esperado ao final: contratos 002 5/5 verdes, trava 001 íntegra no novo caminho,
 
 ## 4. Itens a confirmar com o serviço real (R-002, R-007)
 
+> Em 2026-11-02, `npm run test:deepgram:live` confirmou com chave real: `nova-3` com `pt-BR`, WebM/Opus, M4A, MP3 e áudio WebM aceitos (HTTP 200), tempos por palavra válidos. Ver `qa-evidence.md` §5. Os itens abaixo que seguem abertos estão em §3 do QA.
+
 - O Deepgram aceita o áudio **M4A** e o **WebM/Opus** preparados localmente.
 - `nova-3` com `pt-BR` e com `en` em arquivo gravado devolve texto e tempos por palavra.
 - O código HTTP para créditos esgotados (esperado 402) e o limite de arquivo (2 GB).

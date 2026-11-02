@@ -42,14 +42,13 @@ Contagens da reorganização (SC-006): antes 76 Jest e 31 e2e; depois da Fase 2,
 
 ## 3. Pendente (não validado — Princípio IV)
 
-Estes itens exigem chave, serviço ou Chrome reais e **não** foram verificados; a feature não deve ser chamada de plenamente validada até serem cobertos (R-002, R-007):
+Depois da verificação real da seção 5, continuam **sem** validação (R-002, R-007); a feature não deve ser chamada de plenamente validada até serem cobertos:
 
-- Deepgram real: aceita o áudio **M4A** e **WebM/Opus** preparados; `nova-3` com `pt-BR` e `en` em arquivo gravado; forma real da resposta e dos tempos por palavra.
 - Código HTTP para créditos esgotados (assumido 402) e limite real de arquivo (assumido 2 GB).
-- Chave que vale no ao vivo mas não no arquivo gravado (ou o inverso).
+- Chave que vale no ao vivo mas não no arquivo gravado (ou o inverso): a chave usada nos testes valeu nos dois usos.
 - Arquivo longo: tempo de resposta e `TIMEOUT` (teto de 30 min do cliente).
-- Os quatro formatos importados com o Deepgram (MP4, MP3 e áudio WebM).
-- Seletor nativo de captura e a gravação real de tela/áudio (o e2e usa captura simulada).
+- Fala real em inglês com o Deepgram (o inglês foi exercitado só com mídia sintética, sem fala).
+- Seletor nativo de captura e a gravação real de tela/áudio no Chrome (o e2e usa captura simulada).
 - Verificação visual no Chrome da lista "Serviço de transcrição" e do texto "Transcrito por …".
 
 Roteiro manual: `quickstart.md` §3 e §4.
@@ -59,3 +58,20 @@ Roteiro manual: `quickstart.md` §3 e §4.
 - **T020 antecipada**: a sessão (US2) foi implementada na Fase 3, porque a interface precisa repassar o provedor e gravá-lo no resultado. O contrato da sessão passou nesse momento.
 - **Mensagens**: as mensagens de erro passaram a citar `{rótulo}` sem artigo ("Sem conexão com ElevenLabs", "Limite temporário de ElevenLabs"), o que mudou duas asserções de `errors.spec.cjs`.
 - **R-011/R-001**: emenda do contrato da 001 aplicada; `git diff` do arquivo mostrou só duas linhas de `import`; trava regravada e conferida.
+
+## 5. Verificação com serviços reais (2026-11-02)
+
+Executada com as chaves do `.env` (ignorado pelo Git), por `tests/integration/deepgram-live.test.mjs` e `tests/integration/elevenlabs-live.test.mjs`, que passam pelo mesmo cliente do app (`transcribePreRecorded`). A saída traz só status e contagens, sem chave nem texto. Amostra de fala: trecho WebM de cerca de 45 s em PT-BR da avaliação de provedores, já usado antes com os dois serviços.
+
+| Verificação | Resultado |
+| --- | --- |
+| Deepgram: autenticação (`npm run test:deepgram:auth`) | HTTP 200 |
+| Deepgram `nova-3`, `pt-BR`, WebM com fala (`npm run test:deepgram:live`) | HTTP 200; 564 caracteres; 102 palavras, **102 com tempo válido**, 0 ausentes e 0 inválidos; SRT gerado (102 cues por palavra, antes do agrupamento do app) |
+| Deepgram aceita o áudio preparado de `video-audio.webm` (Opus) e `audio-only.webm` | HTTP 200 nos dois |
+| Deepgram aceita o M4A extraído de `video-audio.mp4` (AAC) | HTTP 200 |
+| Deepgram aceita `audio-only.mp3` | HTTP 200 |
+| Deepgram com `language=en` | HTTP 200 (mídia sintética, texto vazio esperado) |
+| ElevenLabs: autenticação | HTTP 200, plano free |
+| ElevenLabs Scribe v2, mesma amostra, após a refatoração para `timed-words` | HTTP 200; 571 caracteres; 100 palavras, 100 com tempo válido; SRT gerado |
+
+Conclusões: o formato de pedido e de resposta do Deepgram documentado confere com o comportamento real (R-002 confirmado para `pt-BR` e para os formatos de áudio preparados); a refatoração do adaptador da ElevenLabs não alterou o comportamento real. As fixtures sintéticas voltam sem texto por não terem fala, o que prova a aceitação do formato, não a qualidade.
