@@ -12,7 +12,7 @@ Extensão Chrome (Manifest V3) para gravar tela e áudio, transcrever ao vivo e 
 - **Auto-minimiza** ao iniciar e **auto-restaura** ao parar — a janela nunca aparece no que você compartilha
 - Download em **.webm** (vídeo) ou **.mp3** (áudio, via conversão local)
 - **Transcrição em tempo real** via Deepgram (~300ms de latência)
-- **Transcrição após gravação** via ElevenLabs Scribe v2, mesmo sem transcrição ao vivo
+- **Transcrição após gravação** por **ElevenLabs Scribe v2 ou Deepgram Nova-3**, à sua escolha, mesmo sem transcrição ao vivo
 - Importação de vídeo WebM/MP4 e áudio WebM/MP3 para transcrever sem nova captura
 - Download do texto completo em **.txt** e de legendas em **.srt** após resultado com tempos válidos
 
@@ -90,10 +90,10 @@ A transcrição ao vivo envia áudio da captura à [Deepgram](https://deepgram.c
 ### Transcrição após a gravação
 
 1. Grave em **Vídeo + Áudio** ou **Só Áudio** e espere o arquivo ficar pronto. Também é possível selecionar um arquivo salvo na tela inicial: vídeo WebM/MP4 ou áudio WebM/MP3.
-2. Escolha **Português (Brasil)** ou **Inglês** e salve uma chave ElevenLabs própria. A chave Deepgram não é usada nesse fluxo.
-3. Leia o aviso e clique em **Transcrever áudio**. Para vídeos, a extensão separa localmente a faixa de áudio sem alterar o original e envia somente o áudio à [ElevenLabs](https://elevenlabs.io). Nenhuma preparação ou envio ocorre antes do clique.
+2. Escolha o **serviço de transcrição** (ElevenLabs ou Deepgram) e **Português (Brasil)** ou **Inglês**. Cada serviço usa a própria chave, salva em ⚙ Configurações; o Deepgram usa a mesma chave da transcrição ao vivo. O último serviço escolhido é lembrado. Sem a chave do serviço escolhido o app só orienta a configurá-la, sem enviar nada.
+3. Leia o aviso e clique em **Transcrever áudio**. Para vídeos, a extensão separa localmente a faixa de áudio sem alterar o original e envia somente o áudio ao serviço escolhido ([ElevenLabs](https://elevenlabs.io) ou [Deepgram](https://deepgram.com)); o aviso na tela cita o serviço. Nada vai ao outro serviço, e nenhuma preparação ou envio ocorre antes do clique.
 4. Acompanhe a preparação e o aguardo da resposta. É possível cancelar ou tentar novamente. Uma falha preserva a mídia e o texto anterior da janela.
-5. Após uma transcrição com texto, baixe TXT e SRT. O app gera legendas locais agrupadas em frases curtas usando os tempos por palavra retornados pela ElevenLabs. Palavras sem tempo próprio são associadas às vizinhas; esses trechos têm sincronização aproximada, informada na tela. Se não houver intervalos confiáveis, só o TXT fica disponível. Mídia sem fala não gera arquivos vazios.
+5. Após uma transcrição com texto, a tela indica quem a gerou ("Transcrito por …") e permite baixar TXT e SRT. É possível transcrever de novo com o outro serviço: o resultado anterior só é substituído quando o novo conclui. O app gera legendas locais agrupadas em frases curtas usando os tempos por palavra retornados pelo serviço. Palavras sem tempo próprio são associadas às vizinhas; esses trechos têm sincronização aproximada, informada na tela. Se não houver intervalos confiáveis, só o TXT fica disponível. Mídia sem fala não gera arquivos vazios.
 
 O áudio preparado deve ter menos de 5 GB conforme o limite da API. Um codec que não possa ser copiado para WebM/Opus ou M4A/AAC é recusado sem enviar vídeo. O cancelamento local impede que uma resposta tardia altere a tela, mas não garante a interrupção de processamento ou cobrança já iniciados no serviço. As transcrições não baixadas ficam apenas na janela atual; ao fechá-la, esse estado se perde. A gravação feita no app é copiada em IndexedDB enquanto grava e só é apagada ao baixar o arquivo ou descartar; se a janela ou o Chrome fechar antes, a tela inicial oferece **Recuperar** ou **Descartar** na próxima abertura (iniciar nova gravação descarta a cópia).
 
@@ -174,7 +174,7 @@ Clique no ícone
 | Qualidade | Escolhida em ⚙ Configurações: Alta (1080p30, 8 Mbps vídeo, 160 kbps áudio), Equilibrada (padrão: 1080p30, 5 Mbps, 128 kbps) ou Econômica (720p24, 2,5 Mbps, 96 kbps) |
 | Arquivo final | Contêiner WebM regravado ao parar, sem recodificar, para ter duração e permitir avançar o vídeo (acima de 1,5 GB mantém o original) |
 | Transcrição ao vivo | Deepgram nova-3 |
-| Transcrição posterior | ElevenLabs Scribe v2; áudio WebM/MP3 ou M4A extraído localmente |
+| Transcrição posterior | ElevenLabs Scribe v2 (limite 5 GB) ou Deepgram Nova-3 (limite 2 GB), à escolha; áudio WebM/MP3 ou M4A extraído localmente |
 | Armazenamento | `chrome.storage.local` (chaves separadas Deepgram e ElevenLabs); resultados só na memória da janela; cópia de segurança da gravação em IndexedDB (`recorder-recovery`) até baixar ou descartar |
 
 ### Permissões
@@ -191,7 +191,7 @@ Clique no ícone
 ## Limitações
 
 - **Só Chrome** — a extensão usa Manifest V3 e APIs de captura do navegador
-- **Transcrição requer internet** — Deepgram no fluxo ao vivo e ElevenLabs no posterior
+- **Transcrição requer internet** — Deepgram no fluxo ao vivo; ElevenLabs ou Deepgram no posterior, conforme sua escolha
 - A extensão não identifica falantes nem mantém histórico; salve os arquivos que deseja conservar.
 - Para converter o WebM para MP4:
   ```bash

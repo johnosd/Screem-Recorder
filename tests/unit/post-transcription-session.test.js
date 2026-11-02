@@ -117,3 +117,62 @@ test('sessão conserva contagem segura de tempos quando SRT não está disponív
   await session.start({ language: 'pt-BR', confirmedExternalSend: true });
   expect(session.getSnapshot().transcript.timingInfo).toEqual(timingInfo);
 });
+
+describe('provedor da transcrição (feature 002)', () => {
+  const deferred = () => {
+    let resolve;
+    const promise = new Promise(r => { resolve = r; });
+    return { promise, resolve };
+  };
+
+  test('sem provider usa ElevenLabs e o snapshot indica quem está processando', async () => {
+    const gate = deferred();
+    const transcribe = jest.fn(async () => { await gate.promise; return result(); });
+    const session = createPostTranscriptionSession({ transcribe });
+    session.setSource(source());
+    const running = session.start({ language: 'pt-BR', confirmedExternalSend: true });
+    expect(session.getSnapshot()).toMatchObject({ status: 'processing', provider: 'elevenlabs' });
+    gate.resolve();
+    await running;
+    expect(transcribe.mock.calls[0][0].provider).toBe('elevenlabs');
+    expect(session.getSnapshot().transcript.provider).toBe('elevenlabs');
+  });
+
+  test('provider inválido é recusado sem publicar processamento nem chamar o serviço', async () => {
+    const transcribe = jest.fn(async () => result());
+    const session = createPostTranscriptionSession({ transcribe });
+    session.setSource(source());
+    await expect(session.start({ language: 'pt-BR', provider: 'toString', confirmedExternalSend: true }))
+      .rejects.toMatchObject({ code: 'INVALID_PROVIDER' });
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(session.getSnapshot().status).toBe('ready');
+  });
+
+  test('cancelar uma nova tentativa com outro provedor preserva o resultado e o provedor anteriores', async () => {
+    const gate = deferred();
+    const transcribe = jest.fn()
+      .mockResolvedValueOnce({ text: 'Primeiro', segments: [] })
+      .mockImplementationOnce(async () => { await gate.promise; return { text: 'Tardio', segments: [] }; });
+    const session = createPostTranscriptionSession({ transcribe });
+    session.setSource(source());
+    await session.start({ language: 'pt-BR', provider: 'elevenlabs', confirmedExternalSend: true });
+    const second = session.start({ language: 'pt-BR', provider: 'deepgram', confirmedExternalSend: true });
+    expect(session.getSnapshot()).toMatchObject({ status: 'processing', provider: 'deepgram',
+      transcript: { text: 'Primeiro', provider: 'elevenlabs' } });
+    session.cancel();
+    gate.resolve();
+    await second;
+    expect(session.getSnapshot()).toMatchObject({ status: 'cancelled',
+      transcript: { text: 'Primeiro', provider: 'elevenlabs' } });
+  });
+
+  test('transcrição ao vivo registrada é do Deepgram e é substituída pelo resultado do provedor escolhido', async () => {
+    const transcribe = jest.fn(async () => ({ text: 'Posterior', segments: [] }));
+    const session = createPostTranscriptionSession({ transcribe });
+    session.setSource(source());
+    session.setExistingTranscript({ text: 'Ao vivo', segments: [], language: 'pt-BR', origin: 'live' });
+    expect(session.getSnapshot().transcript).toMatchObject({ origin: 'live', provider: 'deepgram' });
+    await session.start({ language: 'pt-BR', provider: 'deepgram', confirmedExternalSend: true });
+    expect(session.getSnapshot().transcript).toMatchObject({ text: 'Posterior', origin: 'post', provider: 'deepgram' });
+  });
+});

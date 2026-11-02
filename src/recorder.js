@@ -141,6 +141,9 @@ function renderPostState(state) {
   const hasText = Boolean(transcript?.text?.trim());
   $('transcript-done-block').classList.toggle('hidden', !hasText);
   $('transcript-preview').textContent = hasText ? transcript.text : '';
+  $('transcript-origin').textContent = !hasText ? ''
+    : transcript.origin === 'live' ? 'Transcrição ao vivo (Deepgram)'
+      : isProvider(transcript.provider) ? `Transcrito por ${PROVIDERS[transcript.provider].label} (${transcript.language})` : '';
   $('btn-dl-txt').disabled = !hasText;
   $('btn-dl-srt').disabled = !hasText || !(validSrt(transcript?.srt) || validSegments(transcript?.segments)) ||
     (transcript.origin === 'live' && wasPaused);
@@ -731,7 +734,15 @@ $('post-start').addEventListener('click', async () => {
 });
 
 $('post-cancel').addEventListener('click', () => postSession.cancel());
-$('post-provider').addEventListener('change', renderProviderNotice);
+// Última escolha de provedor: lembrada entre aberturas (valor desconhecido cai no padrão).
+$('post-provider').addEventListener('change', () => {
+  renderProviderNotice();
+  chrome.storage.local.set({ postProvider: selectedProvider() });
+});
+chrome.storage.local.get('postProvider', result => {
+  $('post-provider').value = isProvider(result.postProvider) ? result.postProvider : DEFAULT_PROVIDER;
+  renderProviderNotice();
+});
 renderProviderNotice();
 
 $('post-save-key').addEventListener('click', () => {

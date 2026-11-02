@@ -178,3 +178,81 @@ for (const [status, message] of [
     });
   });
 }
+
+test('retranscrever com outro provedor preserva o texto até concluir e mostra quem o gerou', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ context, page }) => {
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await mockServices(context, { deepgram: async route => {
+      await gate;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(deepgramBody) });
+    } });
+    await saveKeys(page, { deepgramKey: 'dg-e2e', elevenLabsKey: 'el-e2e' });
+    await importMedia(page);
+    await page.locator('#post-provider').selectOption('elevenlabs');
+    await page.locator('#post-start').click();
+    await expect(page.locator('#transcript-preview')).toHaveText('Olá da ElevenLabs');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por ElevenLabs (pt-BR)');
+
+    await page.locator('#post-provider').selectOption('deepgram');
+    await page.locator('#post-start').click();
+    await expect(page.locator('#post-provider')).toBeDisabled();
+    await expect(page.locator('#transcript-preview')).toHaveText('Olá da ElevenLabs');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por ElevenLabs (pt-BR)');
+    release();
+    await expect(page.locator('#transcript-preview')).toHaveText('Olá do Deepgram');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por Deepgram (pt-BR)');
+  });
+});
+
+test('cancelar ou falhar na retranscrição mantém o texto e o provedor anteriores', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ context, page }) => {
+    let fail = false;
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await mockServices(context, { deepgram: async route => {
+      if (fail) return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+      await gate;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(deepgramBody) });
+    } });
+    await saveKeys(page, { deepgramKey: 'dg-e2e', elevenLabsKey: 'el-e2e' });
+    await importMedia(page);
+    await page.locator('#post-start').click();
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por ElevenLabs (pt-BR)');
+
+    await page.locator('#post-provider').selectOption('deepgram');
+    await page.locator('#post-start').click();
+    await expect(page.locator('#post-cancel')).toBeVisible();
+    await page.locator('#post-cancel').click();
+    release();
+    await expect(page.locator('#post-status')).toContainText('cancelada');
+    await expect(page.locator('#transcript-preview')).toHaveText('Olá da ElevenLabs');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por ElevenLabs (pt-BR)');
+    await expect(page.locator('#btn-dl-txt')).toBeEnabled();
+
+    fail = true;
+    await page.locator('#post-start').click();
+    await expect(page.locator('#post-status')).toContainText('Deepgram indisponível');
+    await expect(page.locator('#post-status')).not.toContainText('ElevenLabs');
+    await expect(page.locator('#transcript-preview')).toHaveText('Olá da ElevenLabs');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por ElevenLabs (pt-BR)');
+  });
+});
+
+test('a última escolha de provedor é lembrada e valor inválido cai na ElevenLabs', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ page }) => {
+    await importMedia(page);
+    await expect(page.locator('#post-provider')).toHaveValue('elevenlabs');
+    await page.locator('#post-provider').selectOption('deepgram');
+    await page.reload();
+    await importMedia(page);
+    await expect(page.locator('#post-provider')).toHaveValue('deepgram');
+    await expect(page.locator('#post-notice')).toContainText('enviado a Deepgram');
+
+    await page.evaluate(() => chrome.storage.local.set({ postProvider: 'inexistente' }));
+    await page.reload();
+    await importMedia(page);
+    await expect(page.locator('#post-provider')).toHaveValue('elevenlabs');
+    await expect(page.locator('#post-notice')).toContainText('enviado a ElevenLabs');
+  });
+});

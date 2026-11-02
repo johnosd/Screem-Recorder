@@ -173,3 +173,32 @@ test('Deepgram: CloseStream entrega o trecho final e a pausa suspende o áudio',
     expect(seen.closeStream).toBe(1);
   });
 });
+
+test('transcreve com o Deepgram a gravação remuxada, enviando só o áudio (feature 002)', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page }) => {
+    const requests = [];
+    await context.route('https://api.deepgram.com/v1/listen**', async route => {
+      requests.push(route.request());
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        results: { channels: [{ alternatives: [{ transcript: 'Texto do Deepgram', words: [
+          { word: 'texto', punctuated_word: 'Texto', start: 0, end: 0.4 },
+          { word: 'do', start: 0.5, end: 0.7 },
+          { word: 'deepgram', punctuated_word: 'Deepgram', start: 0.8, end: 1.2 }
+        ] }] }] } }) });
+    });
+    await context.route(apiUrl, route => route.abort());
+    await page.evaluate(() => chrome.storage.local.set({ deepgramKey: 'dg-e2e' }));
+    await startRecording(page);
+    await page.waitForTimeout(1800);
+    await page.locator('#btn-stop').click();
+    await expect(page.locator('#done-sub')).toHaveText('Arquivo .webm pronto');
+    await page.locator('#post-provider').selectOption('deepgram');
+    await page.locator('#post-start').click();
+    await expect(page.locator('#post-status')).toContainText('Transcrição concluída');
+    await expect(page.locator('#transcript-preview')).toHaveText('Texto do Deepgram');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por Deepgram (pt-BR)');
+    expect(requests).toHaveLength(1);
+    expect(requests[0].headers()['content-type']).toBe('audio/webm');
+    expect(requests[0].postDataBuffer().toString('latin1')).not.toContain('video/webm');
+  });
+});

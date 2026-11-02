@@ -4,6 +4,8 @@
 
 Aceita em 2026-10-31 para a feature 001. O fluxo ao vivo existente continua com Deepgram Nova-2; a transcrição posterior usará ElevenLabs Scribe v2.
 
+Nota de 2026-11-02: a feature `002-escolha-provedor-transcricao` concretizou a seleção de provedores prevista no caminho de evolução desta ADR, usando o mesmo contrato de adaptador e acrescentando o Deepgram Nova-3 para arquivos gravados; o padrão continua ElevenLabs e a decisão acima não foi alterada.
+
 ## Data
 
 2026-10-31

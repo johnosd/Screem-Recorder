@@ -13,7 +13,7 @@ update-bug-status.ps1.
 | Slug | Título | Status | Progresso | Última Atualização |
 | --- | --- | --- | --- | --- |
 | 001-transcricao-pos-gravacao | Transcrição pós-gravação de vídeos e áudios | Convergência Pendente | 29/38 tasks | 2026-11-02 |
-| 002-escolha-provedor-transcricao | Escolha do provedor da transcrição pós-gravação | Em Execução | 10/39 tasks | 2026-11-02 |
+| 002-escolha-provedor-transcricao | Escolha do provedor da transcrição pós-gravação | Implementada | 39/39 tasks | 2026-11-02 |
 
 ## Melhorias Ad-hoc
 

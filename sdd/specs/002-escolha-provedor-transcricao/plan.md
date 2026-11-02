@@ -140,10 +140,11 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 
 | Área | Estado |
 | --- | --- |
-| Fase 1 e 2 | Concluídas. |
-| Fase 3 (US1) | Concluída: adaptador Deepgram, registro, cliente, seletor, avisos e erros por provedor; 4 contratos da US1 verdes. |
-| Fase 4 (US2) | Parcial: T020 (sessão) feita; falta T021 (rótulo no resultado), T022 e T023. |
-| Fase 5 e Polish | Não iniciadas. |
+| Fases 1 a 5 | Concluídas. |
+| Polish | Concluída: README, nota na ADR-001, e2e de captura com Deepgram, `qa-evidence.md`. |
+| Contratos | 5/5 verdes; travas 002 e 001 íntegras. |
+| Gates | `npm test` 106/106; `npm run build` ok; `npm run test:e2e` 45/45. |
+| Pendente | Deepgram/ElevenLabs reais, Chrome real e seletor nativo (qa-evidence §3). |
 
 ## Riscos e Decisões
 
@@ -164,15 +165,16 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 | --- | --- | --- | --- |
 | 2026-11-02 | Fase 1 e Fase 2 | Baseline registrado e reorganização dos testes em `tests/` concluída, com emenda R-001/R-011 aplicada (só imports) e trava da 001 regravada. | Nenhuma. |
 | 2026-11-02 | Fase 3 (US1) | Provedor Deepgram, registro, cliente e interface por provedor; 5/5 contratos verdes (sessão adiantada); Jest 102, e2e 41. | Deepgram real e limite real não verificados. |
+| 2026-11-02 | Fases 4, 5 e Polish | Sessão com provedor e rótulo "Transcrito por", persistência da escolha, e2e de captura com Deepgram, docs e QA registrados. | Validação real (chaves, Chrome, seletor nativo). |
 
-**PRÓXIMO**: Fase 4 (US2): T021 rótulo "Transcrito por", T022/T023 testes.
+**PRÓXIMO**: Rodar `sdd-converge`; depois executar o roteiro manual do `quickstart.md` com chaves reais.
 
 ## Arquivos Principais
 
-- `src/post-transcription-providers/{deepgram,index,timed-words}.js`
-- `src/post-transcription-client.js`, `src/post-transcription-session.js`
+- `sdd/specs/002-escolha-provedor-transcricao/qa-evidence.md`
+- `src/post-transcription-providers/`
 - `src/recorder.js`, `recorder.html`
-- `tests/e2e/providers.spec.cjs`, `tests/unit/post-transcription-providers/`
+- `tests/unit/post-provider-choice.contract.test.js` (travado)
 
 ## Cuidados para Retomada
 

@@ -127,12 +127,12 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 ### Implementation
 
 - [X] T020 [US2] Em `src/post-transcription-session.js`: `start({ provider })` (padrão `elevenlabs`), `INVALID_PROVIDER` antes de publicar `processing`, repasse de `provider` a `transcribe` e `transcript.provider` no sucesso; `setExistingTranscript` marca `provider: 'deepgram'`, `origin: 'live'` → contrato: `Sessão repassa o provedor...`
-- [ ] T021 [US2] Em `recorder.html`/`recorder.js`: mostrar "Transcrito por {rótulo} ({idioma})" no bloco do resultado (e "Transcrição ao vivo (Deepgram)" para `origin: 'live'`), sem alterar nomes nem conteúdo dos arquivos TXT/SRT.
+- [X] T021 [US2] Em `recorder.html`/`recorder.js`: mostrar "Transcrito por {rótulo} ({idioma})" no bloco do resultado (e "Transcrição ao vivo (Deepgram)" para `origin: 'live'`), sem alterar nomes nem conteúdo dos arquivos TXT/SRT.
 
 ### Testes da Fase
 
-- [ ] T022 [P] [US2] Acrescentar em `tests/unit/post-transcription-session.test.js`: provedor padrão sem `provider`, cancelamento durante nova tentativa de outro provedor preserva o resultado e o `provider` anteriores, resposta tardia de provedor cancelado é ignorada.
-- [ ] T023 [US2] Em `tests/e2e/providers.spec.cjs`: transcrever com ElevenLabs, trocar para Deepgram e transcrever de novo (texto anterior visível durante o processamento, substituído só ao concluir; rótulo muda), cancelamento e falha mantêm o anterior, erro do provedor escolhido não sugere o outro.
+- [X] T022 [P] [US2] Acrescentar em `tests/unit/post-transcription-session.test.js`: provedor padrão sem `provider`, cancelamento durante nova tentativa de outro provedor preserva o resultado e o `provider` anteriores, resposta tardia de provedor cancelado é ignorada.
+- [X] T023 [US2] Em `tests/e2e/providers.spec.cjs`: transcrever com ElevenLabs, trocar para Deepgram e transcrever de novo (texto anterior visível durante o processamento, substituído só ao concluir; rótulo muda), cancelamento e falha mantêm o anterior, erro do provedor escolhido não sugere o outro.
 
 **Critério de Conclusão**: `npx jest tests/unit/post-provider-choice.contract.test.js` → 5/5 verdes e `check-contract-tests.ps1 -Slug 002-escolha-provedor-transcricao` íntegro; `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` íntegro; testes da fase verdes.
 
@@ -140,11 +140,11 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T020 (adiantada na Fase 3); T021 `#transcript-origin` com "Transcrito por {rótulo} ({idioma})" e "Transcrição ao vivo (Deepgram)"; T022 quatro testes novos de sessão; T023 dois e2e (retranscrição com outro provedor; cancelar/falhar preserva texto e provedor anteriores, e o erro não cita o outro serviço).
+- Contrato: `npx jest tests/unit/post-provider-choice.contract.test.js` → 5/5 verdes; trava 002 íntegra; trava 001 íntegra.
+- Testes executados: `npm test` → 106/106; `npm run build` ok; e2e `providers.spec.cjs` -g "retranscrever|cancelar ou falhar" → 2/2 (suíte completa roda no fechamento da Fase 5).
+- Pendências: Nenhuma.
 
 ---
 
@@ -156,11 +156,11 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 ### Implementation
 
-- [ ] T024 [US3] Em `src/recorder.js`: ler `postProvider` de `chrome.storage.local` na inicialização (valor desconhecido → `DEFAULT_PROVIDER`), gravar a cada mudança do seletor e atualizar aviso e estado dos botões ao carregar.
+- [X] T024 [US3] Em `src/recorder.js`: ler `postProvider` de `chrome.storage.local` na inicialização (valor desconhecido → `DEFAULT_PROVIDER`), gravar a cada mudança do seletor e atualizar aviso e estado dos botões ao carregar.
 
 ### Testes da Fase
 
-- [ ] T025 [US3] Em `tests/e2e/providers.spec.cjs`: primeira abertura mostra ElevenLabs; escolher Deepgram, recarregar e conferir; valor inválido em storage cai em ElevenLabs.
+- [X] T025 [US3] Em `tests/e2e/providers.spec.cjs`: primeira abertura mostra ElevenLabs; escolher Deepgram, recarregar e conferir; valor inválido em storage cai em ElevenLabs.
 
 **Critério de Conclusão**: testes da fase verdes; contratos continuam 5/5 e as duas travas íntegras.
 
@@ -168,33 +168,35 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T024 `postProvider` em `chrome.storage.local`, lido na inicialização (valor desconhecido → ElevenLabs) e gravado a cada mudança; T025 e2e de persistência e valor inválido.
+- Contrato: 5/5 verdes; trava 002 íntegra; trava 001 íntegra.
+- Testes executados: `npm test` → 106/106; `npm run build` ok; e2e `-g "última escolha"` → 1/1; suíte completa na Polish: 45/45.
+- Pendências: Nenhuma.
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T026 [Shared] `tests/e2e/capture.spec.cjs`: gravar com captura simulada, escolher Deepgram (rede simulada) e transcrever a gravação remuxada; conferir corpo só de áudio.
-- [ ] T027 [Shared] Atualizar `README.md` (escolha de provedor, estrutura `tests/`, comandos) e `CLAUDE.md`; anotar no `## Status` da `sdd/adr/ADR-001-...` que a feature 002 concretizou a seleção (ou propor `sdd-adr`); linha em `.planning/backlog.md`.
-- [ ] T028 [Shared] Executar `quickstart.md`: o que depender de chave real, Chrome real ou seletor nativo fica registrado como pendente em `qa-evidence.md` (criar se precisar), sem chamar de validado.
-- [ ] T029 [Shared] Busca final por "ElevenLabs"/"Deepgram" fixos em mensagens da interface e por chaves em logs, testes e relatórios.
+- [X] T026 [Shared] `tests/e2e/capture.spec.cjs`: gravar com captura simulada, escolher Deepgram (rede simulada) e transcrever a gravação remuxada; conferir corpo só de áudio.
+- [X] T027 [Shared] Atualizar `README.md` (escolha de provedor, estrutura `tests/`, comandos) e `CLAUDE.md`; anotar no `## Status` da `sdd/adr/ADR-001-...` que a feature 002 concretizou a seleção (ou propor `sdd-adr`); linha em `.planning/backlog.md`.
+- [X] T028 [Shared] Executar `quickstart.md`: o que depender de chave real, Chrome real ou seletor nativo fica registrado como pendente em `qa-evidence.md` (criar se precisar), sem chamar de validado.
+- [X] T029 [Shared] Busca final por "ElevenLabs"/"Deepgram" fixos em mensagens da interface e por chaves em logs, testes e relatórios.
 
 ### Checklist de Release
 
 - [X] Fase 2 (US4, reorganização) concluída; contagens iguais às da T001
-- [ ] Fase 3 (US1) concluída
-- [ ] Fase 4 (US2) concluída
-- [ ] Fase 5 (US3) concluída
-- [ ] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 002 e 001
-- [ ] `npm test` e `npm run test:e2e` executados e registrados
-- [ ] `npm run build` sem erro, sem editar `dist/`
-- [ ] Extensão recarregada no Chrome e fluxo verificado, ou pendência declarada
-- [ ] Deepgram real, limite real e seletor nativo de captura verificados separadamente, ou pendências declaradas
-- [ ] `quickstart.md` executado
+- [X] Fase 3 (US1) concluída
+- [X] Fase 4 (US2) concluída
+- [X] Fase 5 (US3) concluída
+- [X] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 002 e 001
+- [X] `npm test` e `npm run test:e2e` executados e registrados
+- [X] `npm run build` sem erro, sem editar `dist/`
+- [X] Extensão recarregada no Chrome e fluxo verificado, ou pendência declarada
+- [X] Deepgram real, limite real e seletor nativo de captura verificados separadamente, ou pendências declaradas
+- [X] `quickstart.md` executado
+
+> **Nota (2026-11-02):** a execução do `quickstart.md` cobriu as checagens automatizadas e o Chromium simulado. O Chrome real, as chaves reais e o seletor nativo de captura **não** foram verificados e estão declarados como pendência em `qa-evidence.md` §3 (Princípio IV da constitution). Os itens marcados "ou pendência declarada" foram fechados por essa declaração, não por validação real.
 
 ---
 

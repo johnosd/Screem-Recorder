@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Em Execução
+**Status**: Implementada
 
 **Input**: "gostaria também de poder escolher entre Deepgram e ElevenLabs para transcrição pós[-gravação]"
 
