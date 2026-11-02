@@ -115,3 +115,7 @@ A ponte de automação de interface desta sessão permaneceu indisponível, mas 
 
 `e2e/capture.spec.cjs` grava no Chromium com tela/áudio e microfone falsos. Cobertura: gravar com pausa e retomada, WebM final com duração, vídeo e áudio; transcrever a gravação **já remuxada** com ElevenLabs simulado (payload `audio/webm`, sem `video/webm`); texto ao vivo do Deepgram simulado entregue após `CloseStream`; recuperação da gravação interrompida. `npm run test:e2e` → 22/22. T028 segue aberta: falta seletor nativo, Deepgram e ElevenLabs reais.
 
+## Evidência complementar (2026-11-02): estados de erro da UI (cenário 6)
+
+`e2e/errors.spec.cjs` (8 testes, Chromium, ElevenLabs simulado) cobre na interface: chave ausente (orienta para ⚙ Configurações, sem requisição), sem conexão (com "Tentar novamente"), HTTP 429/503/504 com mensagens próprias, arquivo corrompido e vídeo sem áudio (falham localmente, sem requisição) e extensão/tipo discrepantes ou arquivo vazio recusados na seleção. Os estados de erro da interface deixam de estar pendentes no cenário 6; o serviço real continua sem verificação.
+
