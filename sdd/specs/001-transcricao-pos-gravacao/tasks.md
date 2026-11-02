@@ -174,3 +174,9 @@
 2. Ligar a mídia finalizada à sessão e entregar P1; parar no checkpoint e validar no Chrome.
 3. Acrescentar seleção de arquivos para P2; validar os quatro formatos.
 4. Executar Polish, gates, `quickstart.md` e revisão SDD; não transformar ausência de serviço real em prova de aceitação.
+
+## Phase 5: Convergence
+
+**Propósito**: lacunas achadas por `sdd-converge` em 2026-11-02, depois dos ajustes ad-hoc de gravação (remux do WebM, `CloseStream` do Deepgram). Nenhuma task acima foi alterada.
+
+- [ ] T028 [Shared] No Chrome, gravar em Vídeo + Áudio e em Só Áudio e transcrever o arquivo final **já regravado** por `src/webm-finalize.js`: conferir que `prepareAudio` extrai só o áudio, que o envio não contém vídeo e que TXT/SRT saem normalmente. Com a transcrição ao vivo ativada, conferir que o texto ao vivo aparece na tela final até 3 s depois do fim da gravação e que a retranscrição o substitui só após concluir. Registrar em `qa-evidence.md` o que depender de chave ou serviço real (SC-006; FR-009; FR-014; Constitution IV).
