@@ -19,6 +19,7 @@
 - Indicação, junto ao resultado, de qual provedor o gerou.
 - Retranscrição com outro provedor, preservando o resultado anterior até a nova tentativa concluir com texto.
 - Memória da última escolha entre aberturas do app.
+- Reorganização dos arquivos de teste em uma pasta `tests/`, com subpastas por tipo, mantendo `npm test` e `npm run test:e2e` funcionando, incluindo a mudança de local do teste de contrato da feature 001 por emenda aprovada.
 
 ### Fora de Escopo
 
@@ -29,6 +30,8 @@
 - Comparar dois resultados lado a lado, medir qualidade ou custo, ou manter histórico de transcrições.
 - Alterar formatos aceitos, idiomas (pt-BR e inglês), a preparação local do áudio ou as regras de SRT já definidas pela feature 001.
 - Mostrar o provedor nos nomes dos arquivos TXT e SRT baixados.
+- Alterar o conteúdo ou o número dos testes ao movê-los; a reorganização não cria, remove nem reescreve casos, salvo as linhas de caminho (import e leitura de fixtures) que o novo local exige.
+- Mover código-fonte da extensão, mudar o empacotamento ou trocar as ferramentas de teste (Jest e Playwright).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -80,6 +83,21 @@ Como usuário recorrente, quero que o app comece com o provedor que usei por úl
 1. **Given** uma primeira abertura sem escolha anterior, **When** a tela final é exibida, **Then** o seletor mostra ElevenLabs.
 2. **Given** uma escolha anterior, **When** o app é reaberto, **Then** o seletor mostra o último provedor usado.
 
+### User Story 4 - Testes organizados em tests/ (Priority: P2)
+
+Como pessoa que mantém o projeto, quero todos os arquivos de teste reunidos em uma pasta `tests/`, separados por tipo, para encontrá-los facilmente e manter `src/` só com o código da extensão.
+
+**Why this priority**: É organização de manutenção, independente do seletor de provedor; aproveita o trabalho de testes desta feature para não deixar os novos testes espalhados.
+
+**Independent Test**: Executar `npm test`, `npm run build` e `npm run test:e2e` depois da mudança e conferir que as contagens de testes e os resultados são os mesmos de antes, sem arquivo de teste fora de `tests/`.
+
+**Acceptance Scenarios**:
+
+1. **Given** o projeto antes da mudança, **When** os testes são movidos, **Then** `npm test` e `npm run test:e2e` executam o mesmo número de casos e passam, e nenhum arquivo de teste permanece em `src/`, `e2e/` ou `integration/`.
+2. **Given** a estrutura nova, **When** a pessoa abre `tests/`, **Then** encontra `unit/`, `e2e/`, `integration/` e `fixtures/`, cada tipo no seu lugar.
+3. **Given** o teste de contrato da feature 001, **When** ele é movido, **Then** os 5 casos permanecem idênticos, só os caminhos de importação mudam, a emenda fica registrada no plano da 001 e a verificação da trava termina íntegra no novo local.
+4. **Given** o build da extensão, **When** é gerado após a mudança, **Then** os arquivos de teste e as fixtures não entram no pacote da extensão e a extensão carrega normalmente.
+
 ### Edge Cases
 
 - Provedor escolhido sem chave: orientação para ⚙ Configurações e nenhum envio (história 1).
@@ -88,6 +106,8 @@ Como usuário recorrente, quero que o app comece com o provedor que usei por úl
 - Troca de provedor com mídia sem fala ou sem faixa de áudio: o resultado é o mesmo estado explícito da feature 001, sem TXT ou SRT vazios.
 - Resposta do provedor com tempos ausentes ou inválidos: aplica-se o tratamento já definido para SRT na feature 001, para ambos os provedores.
 - Fechar a janela perde a transcrição ainda não baixada, como antes; a escolha de provedor persiste.
+- Testes que leem fixtures ou importam módulos de `src/` continuam achando os arquivos no novo local; um caminho quebrado faz o teste falhar de forma visível, nunca ser ignorado.
+- O teste real da ElevenLabs (`integration/`) continua fora da execução padrão de `npm test` e `npm run test:e2e`.
 
 ## Requirements *(mandatory)*
 
@@ -106,6 +126,10 @@ Como usuário recorrente, quero que o app comece com o provedor que usei por úl
 - **FR-011**: O app DEVE respeitar o limite de tamanho de cada provedor e DEVE informar antes do envio quando a mídia preparada o exceder.
 - **FR-012**: O app NÃO DEVE alterar a transcrição ao vivo, que continua usando o Deepgram, nem o comportamento atual da transcrição pela ElevenLabs.
 - **FR-013**: As chaves DEVEM permanecer fora de logs, relatórios, testes e arquivos gerados, como já exigido pela constitution.
+- **FR-014**: Todos os arquivos de teste (unitários, e2e, de integração e de contrato) e as fixtures de teste DEVEM ficar sob `tests/`, nas subpastas `unit/`, `e2e/`, `integration/` e `fixtures/`; `src/` NÃO DEVE conter arquivos de teste nem fixtures.
+- **FR-015**: Após a mudança, `npm test` e `npm run test:e2e` DEVEM executar o mesmo conjunto de casos de antes, com os mesmos resultados, e o teste real da ElevenLabs DEVE continuar isolado das execuções padrão.
+- **FR-016**: O teste de contrato da feature 001 DEVE ser movido por emenda aprovada pelo proprietário: os 5 casos ficam inalterados, só mudam linhas de caminho; a emenda DEVE ser registrada no plano da 001 e a trava DEVE ser regravada e conferida no novo local.
+- **FR-017**: Os arquivos de teste e as fixtures NÃO DEVEM ser incluídos no pacote da extensão gerado, e os testes novos desta feature DEVEM nascer em `tests/`.
 
 ### Key Entities
 
@@ -122,6 +146,8 @@ Como usuário recorrente, quero que o app comece com o provedor que usei por úl
 - **SC-003**: Em 100% dos cenários de chave ausente, cancelamento e falha dos testes, a mídia e o resultado anterior continuam disponíveis.
 - **SC-004**: Com as duas chaves salvas, trocar de provedor e transcrever de novo exige apenas escolher no seletor e acionar a transcrição, sem abrir as Configurações.
 - **SC-005**: Depois de fechar e reabrir o app, o seletor mostra o último provedor usado em 100% dos testes.
+- **SC-006**: Depois da reorganização, a contagem de casos Jest e Playwright e o resultado de aprovação são iguais aos de antes (ponto de partida: 76 Jest e 31 e2e passando), e a contagem de arquivos de teste fora de `tests/` é zero.
+- **SC-007**: A verificação da trava de contratos da feature 001 termina íntegra, com 5 testes, no novo local.
 
 ## Assumptions
 
@@ -130,6 +156,8 @@ Como usuário recorrente, quero que o app comece com o provedor que usei por úl
 - O Deepgram devolve tempos por palavra suficientes para o SRT; se não devolver, aplica-se o tratamento de tempos ausentes da feature 001.
 - A feature estende a 001: onde a spec dela cita somente a ElevenLabs para a transcrição posterior, passa a valer a escolha do provedor, sem outras mudanças.
 - Dados e resultados ficam apenas na sessão, como na feature 001.
+- A reorganização usa a estrutura `tests/unit` (Jest, espelhando `src/`), `tests/e2e` (Playwright), `tests/integration` (teste real da ElevenLabs) e `tests/fixtures`; a configuração das ferramentas e os scripts do `package.json` serão ajustados no plano.
+- O proprietário aprovou, nesta sessão, a emenda ao teste de contrato da feature 001 (mudança de local). O `sdd-plan` DEVE registrá-la como risco/decisão `R-00X` no plano da 001 antes de o `sdd-execute` mover o arquivo e regravar a trava.
 - Mudanças de destino de rede e de permissões, se necessárias, serão descritas no plano e no manifesto, conforme a constitution.
 
 ## Clarifications
@@ -141,3 +169,6 @@ Como usuário recorrente, quero que o app comece com o provedor que usei por úl
 - Q: Qual provedor aparece ao abrir o app? → A: O último usado; ElevenLabs na primeira vez.
 - Q: O resultado indica o provedor? → A: Sim, na tela; nomes dos arquivos baixados não mudam.
 - Q: Sugerir o outro provedor quando falha? → A: Não, só mostrar o erro.
+- Q: Reorganizar os testes em `tests/` nesta feature? → A: Sim, incluído como User Story 4.
+- Q: Como tratar o teste de contrato da 001, travado por hash? → A: Mover com emenda aprovada (só caminhos mudam; trava regravada).
+- Q: Qual estrutura em `tests/`? → A: `unit`, `e2e`, `integration` e `fixtures`.
