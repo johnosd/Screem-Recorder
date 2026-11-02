@@ -30,3 +30,10 @@ Jest: `Tests: 59 passed, 59 total`. E2E: `13 passed`.
 ## Recommendation
 
 Segurar — validar manualmente: gravar em modo Só Áudio, clicar em "Parar compartilhamento" e conferir que a tela "Gravação Concluída" aparece.
+
+## Addendum (2026-11-02): reprodução automatizada no Chromium
+
+Teste e2e `e2e/capture.spec.cjs` ("modo só áudio encerra ao parar o compartilhamento pelo Chrome"): grava em Chromium com tela e áudio falsos, dispara `ended` na faixa de vídeo capturada e espera a tela final. **Falha com o bug reintroduzido** (listener em `finalStream`) e **passa com a correção**.
+
+O resultado continua **partial**: a captura foi simulada (`--auto-select-desktop-capture-source`, dispositivos falsos) e o Deepgram foi simulado; o seletor nativo e o serviço real seguem sem verificação.
+

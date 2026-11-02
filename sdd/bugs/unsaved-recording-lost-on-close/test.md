@@ -30,3 +30,10 @@ Jest: `Tests: 59 passed, 59 total`. E2E: `13 passed`.
 ## Recommendation
 
 Segurar — fechar a janela durante a gravação e depois de parar sem baixar; conferir o diálogo. Follow-up: persistir chunks em IndexedDB para sobreviver a crash.
+
+## Addendum (2026-11-02): reprodução automatizada no Chromium
+
+Teste e2e ("fechar a janela gravando pede confirmação..."): o diálogo `beforeunload` do Chromium aparece com a gravação em andamento e depois de parar sem baixar, e deixa de aparecer após baixar o WebM. Também há o teste de recuperação ("gravação interrompida pela queda da janela é recuperada...").
+
+O resultado continua **partial**: a captura foi simulada (`--auto-select-desktop-capture-source`, dispositivos falsos) e o Deepgram foi simulado; o seletor nativo e o serviço real seguem sem verificação.
+

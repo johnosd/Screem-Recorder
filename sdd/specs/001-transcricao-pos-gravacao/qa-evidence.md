@@ -110,3 +110,8 @@ A ponte de automação de interface desta sessão permaneceu indisponível, mas 
 
 - O usuário informou “funcionou com arquivo de audio tbm” e esclareceu que gravou no modo Só Áudio. Registro como validação manual relatada do fluxo P1 no Chrome, em resposta à orientação para gravar fala, transcrever e conferir TXT/SRT. O agente não inspecionou a mídia, os downloads ou a requisição dessa tentativa; a confirmação não cobre importação de MP3 ou WebM de áudio (T015).
 - Novo E2E no Chromium: após uma primeira transcrição simulada, inicia outra, cancela enquanto a resposta está pendente e confirma que texto anterior e botões TXT/SRT continuam disponíveis. `npm.cmd run test:e2e` compilou a extensão e passou 12/12. O cenário usa arquivo importado e resposta simulada; não comprova Deepgram ao vivo, captura real ou cancelamento da chamada comercial.
+
+## Evidência complementar (2026-11-02): captura simulada no Chromium (T028, parcial)
+
+`e2e/capture.spec.cjs` grava no Chromium com tela/áudio e microfone falsos. Cobertura: gravar com pausa e retomada, WebM final com duração, vídeo e áudio; transcrever a gravação **já remuxada** com ElevenLabs simulado (payload `audio/webm`, sem `video/webm`); texto ao vivo do Deepgram simulado entregue após `CloseStream`; recuperação da gravação interrompida. `npm run test:e2e` → 22/22. T028 segue aberta: falta seletor nativo, Deepgram e ElevenLabs reais.
+

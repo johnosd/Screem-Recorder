@@ -30,3 +30,10 @@ Jest: `Tests: 59 passed, 59 total`. E2E: `13 passed`.
 ## Recommendation
 
 Segurar — gravar com chave Deepgram real, falar e parar logo em seguida, e conferir que a última frase aparece no TXT.
+
+## Addendum (2026-11-02): reprodução automatizada no Chromium
+
+Teste e2e ("Deepgram: CloseStream entrega o trecho final..."): WebSocket simulado com `routeWebSocket`; o servidor só responde o trecho final ao receber `CloseStream`. **Falha com o bug reintroduzido** (`socket.close()` direto) e **passa com a correção**. Também confirma que a pausa interrompe os frames de áudio e envia `KeepAlive`.
+
+O resultado continua **partial**: a captura foi simulada (`--auto-select-desktop-capture-source`, dispositivos falsos) e o Deepgram foi simulado; o seletor nativo e o serviço real seguem sem verificação.
+
