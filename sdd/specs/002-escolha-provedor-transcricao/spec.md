@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Convergência Pendente
+**Status**: Convergida
 
 **Input**: "gostaria também de poder escolher entre Deepgram e ElevenLabs para transcrição pós[-gravação]"
 

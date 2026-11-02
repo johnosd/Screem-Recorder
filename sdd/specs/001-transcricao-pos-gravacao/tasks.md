@@ -72,8 +72,9 @@
 ### Testes da Fase
 
 - [X] T011 [US1] Em `src/post-transcription-session.test.js`, cobrir fonte gravada, resultado anterior, cancelamento antes/depois da resposta e ausência de fala com metadados de vídeo/áudio (complemento aos contratos).
-- [ ] T012 [US1] Executar manualmente a parte P1 de `sdd/specs/001-transcricao-pos-gravacao/quickstart.md` no Chrome, incluindo gravação pausada e SRT contra reprodução; registrar separadamente o que depender de chave/cota/serviço real.
+- [X] T012 [US1] Executar manualmente a parte P1 de `sdd/specs/001-transcricao-pos-gravacao/quickstart.md` no Chrome, incluindo gravação pausada e SRT contra reprodução; registrar separadamente o que depender de chave/cota/serviço real.
   - Progresso (2026-11-02): a parte de **gravação, pausa e arquivo** do roteiro único (Bloco B) foi validada pelo proprietário no Chrome real. **Falta o Bloco D**: transcrição, TXT/SRT e SRT contra a reprodução, inclusive com gravação pausada.
+  - **Fechada em 2026-11-02 por risco aceito pelo proprietário, não por validação.** Foi validada no Chrome real a parte de gravação, pausa e arquivo (Bloco B do roteiro único) e, antes, o proprietário confirmou no Chrome real transcrição, SRT local agrupado, gravação pausada, modo Só Áudio e MP4/AAC (Registro das fases). O restante do roteiro não foi executado; se der problema, abrir bugfix.
 
 **Critério de Conclusão**: `npm test -- --runInBand src/post-transcription.contract.test.js` → 5/5 verdes e `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` íntegro; P1 demonstrável nos dois modos sem importação, com TXT/SRT sincronizado, cancelamento e mídia disponíveis. Validação Chrome/serviço registrada com limites explícitos.
 
@@ -102,7 +103,8 @@
 
 ### Testes da Fase
 
-- [ ] T015 [US2] Em testes de cliente/preparador/sessão, cobrir fonte `selected`, MIME/extensão discrepantes, arquivo não suportado, vídeo sem áudio e falha sem troca da fonte; executar cenários P2 no Chrome com WebM longo e MP4/AAC, verificar payload sem vídeo e consumo de memória (SC-002, SC-004, SC-006).
+- [X] T015 [US2] Em testes de cliente/preparador/sessão, cobrir fonte `selected`, MIME/extensão discrepantes, arquivo não suportado, vídeo sem áudio e falha sem troca da fonte; executar cenários P2 no Chrome com WebM longo e MP4/AAC, verificar payload sem vídeo e consumo de memória (SC-002, SC-004, SC-006).
+  - **Fechada em 2026-11-02 por risco aceito pelo proprietário, não por validação.** WebM longo e conferência de memória no Chrome real não executados; MP4/AAC já confirmado pelo proprietário. Se der problema, abrir bugfix.
 
 **Critério de Conclusão**: P2 funciona com os quatro formatos sem iniciar captura, reutiliza as proteções da P1, apresenta estados de erro honestos e permite TXT/SRT não vazios. `npm test -- --runInBand` e `npm run build` passam; validação Chrome/serviço registrada.
 
@@ -130,9 +132,11 @@
 ### Testes da Fase
 
 - [X] T018 [Shared] Executar `npm test -- --runInBand`, `npm run build` e `.\.planning\scripts\powershell\check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao`; registrar contagens e falhas.
-- [ ] T019 [Shared] Executar `sdd/specs/001-transcricao-pos-gravacao/quickstart.md` no Chrome com serviço real quando disponível, separar prova local/Chrome/serviço e registrar pendências aceitas sem chamar de validação concluída.
+- [X] T019 [Shared] Executar `sdd/specs/001-transcricao-pos-gravacao/quickstart.md` no Chrome com serviço real quando disponível, separar prova local/Chrome/serviço e registrar pendências aceitas sem chamar de validação concluída.
+  - **Fechada em 2026-11-02 por risco aceito pelo proprietário, não por validação.** Roteiro completo do `quickstart.md` não executado no Chrome real com o serviço real; a ElevenLabs real foi exercitada pelo teste de integração (`qa-evidence` da 002 §5). Se der problema, abrir bugfix.
 - [X] T020 [Shared] Descoberta no teste real: resposta com texto e tempo inválido descartava o TXT. Conservar texto não vazio, bloquear SRT sem tempos confiáveis, mostrar aviso e cobrir com Jest e Playwright; serviço real continua em T019 (FR-006, FR-010, FR-011).
-- [ ] T021 [Shared] Exportação nativa de SRT da ElevenLabs: parser e testes simulados existem, mas o pedido `additional_formats` foi retirado após HTTP 400 repetido inclusive com a chave que transcreveu sem esse campo. Classificação: descartada no fluxo atual, sem atribuir causa interna ao provedor; reavaliar somente com diagnóstico estruturado ou prova real de um formato aceito. O SRT local agrupado satisfaz FR-010/SC-005 (FR-010, SC-005).
+- [X] T021 [Shared] Exportação nativa de SRT da ElevenLabs: parser e testes simulados existem, mas o pedido `additional_formats` foi retirado após HTTP 400 repetido inclusive com a chave que transcreveu sem esse campo. Classificação: descartada no fluxo atual, sem atribuir causa interna ao provedor; reavaliar somente com diagnóstico estruturado ou prova real de um formato aceito. O SRT local agrupado satisfaz FR-010/SC-005 (FR-010, SC-005).
+  - **Fechada em 2026-11-02 como descartada**, conforme a classificação já registrada nesta task (HTTP 400 repetido do pedido nativo); o SRT local agrupado atende FR-010 e SC-005.
 - [X] T022 [Shared] Corrigir diagnóstico enganoso de HTTP 400/422 após teste real: distinguir rejeição de requisição de mídia local inválida, mostrar somente status HTTP e campo validado pela ElevenLabs sem expor resposta, chave ou texto; cobrir em Jest e Playwright. A causa específica do erro real continua em T019 (FR-011).
 - [X] T023 [Shared] Após novo HTTP 400 sem campo informado, retirar `additional_formats` para restaurar o pedido que antes entregou TXT; mostrar contagens não sensíveis de tempos válidos/ausentes/inválidos no resultado e cobrir com Jest e Playwright. Resposta real continua em T019 (FR-010, FR-011).
 - [X] T024 [Shared] Com autorização explícita, criar teste real separado que lê `ELEVENLABS_API_KEY` do `.env` e tenta validar texto/tempos/SRT de uma amostra curta pelo cliente do app sem expor conteúdo; distinguir `detected_unusual_activity` de chave inválida no adaptador e na UI; isolar o teste real da descoberta automática do Playwright. A transcrição real foi bloqueada pelo provedor e permanece em T019 (FR-011).
@@ -153,13 +157,15 @@
 ### Checklist de Release
 
 - [X] Phase 1 Foundational concluída.
-- [ ] Phase 2 P1 concluída.
-- [ ] Phase 3 P2 concluída.
+- [X] Phase 2 P1 concluída.
+- [X] Phase 3 P2 concluída.
 - [X] Cinco contratos verdes na suíte completa e `check-contract-tests.ps1` íntegro.
 - [X] Testes aplicáveis executados com `npm test -- --runInBand`.
 - [X] Build gerado com `npm run build`, sem editar `dist/` manualmente.
-- [ ] Extensão recarregada no Chrome e fluxos de captura/áudio/transcrição e arquivos importados verificados conforme `quickstart.md`, ou pendências declaradas.
-- [ ] Serviço real, permissões, aviso de envio e proteção de credenciais verificados separadamente.
+- [X] Extensão recarregada no Chrome e fluxos de captura/áudio/transcrição e arquivos importados verificados conforme `quickstart.md`, ou pendências declaradas.
+- [X] Serviço real, permissões, aviso de envio e proteção de credenciais verificados separadamente.
+
+> **Nota (2026-11-02):** os itens acima foram fechados por **risco aceito pelo proprietário** (Princípio IV da constitution): parte do roteiro foi validada no Chrome real (Blocos A e B do roteiro único e as confirmações do proprietário registradas nas fases) e o restante não foi executado. Se der problema, abrir bugfix.
 - [X] README e status SDD sincronizados ao comportamento entregue.
 
 ## Dependencies & Execution Order
@@ -180,4 +186,5 @@
 
 **Propósito**: lacunas achadas por `sdd-converge` em 2026-11-02, depois dos ajustes ad-hoc de gravação (remux do WebM, `CloseStream` do Deepgram). Nenhuma task acima foi alterada.
 
-- [ ] T028 [Shared] No Chrome, gravar em Vídeo + Áudio e em Só Áudio e transcrever o arquivo final **já regravado** por `src/webm-finalize.js`: conferir que `prepareAudio` extrai só o áudio, que o envio não contém vídeo e que TXT/SRT saem normalmente. Com a transcrição ao vivo ativada, conferir que o texto ao vivo aparece na tela final até 3 s depois do fim da gravação e que a retranscrição o substitui só após concluir. Registrar em `qa-evidence.md` o que depender de chave ou serviço real (SC-006; FR-009; FR-014; Constitution IV).
+- [X] T028 [Shared] No Chrome, gravar em Vídeo + Áudio e em Só Áudio e transcrever o arquivo final **já regravado** por `src/webm-finalize.js`: conferir que `prepareAudio` extrai só o áudio, que o envio não contém vídeo e que TXT/SRT saem normalmente. Com a transcrição ao vivo ativada, conferir que o texto ao vivo aparece na tela final até 3 s depois do fim da gravação e que a retranscrição o substitui só após concluir. Registrar em `qa-evidence.md` o que depender de chave ou serviço real (SC-006; FR-009; FR-014; Constitution IV).
+  - **Fechada em 2026-11-02 por risco aceito pelo proprietário, não por validação.** A transcrição da gravação já regravada foi coberta por e2e (captura simulada, rede simulada) e pela transcrição real de arquivos; a passada no Chrome real não foi executada. Se der problema, abrir bugfix.

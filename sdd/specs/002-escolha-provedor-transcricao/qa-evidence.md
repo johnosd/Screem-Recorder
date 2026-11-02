@@ -90,3 +90,8 @@ As amostras foram geradas por `tests/integration/generate-speech-samples.ps1` (f
 | WebSocket ao vivo com a mesma chave | handshake | `open` | n/a | nenhum áudio enviado |
 
 Conclusões: SC-001 fica provado com fala real nos três formatos de áudio preparados e nos dois idiomas (Deepgram, `nova-3`); o código 402 da documentação (`ASR_PAYMENT_REQUIRED`) coincide com o `PAYMENT_REQUIRED` do adaptador. Os testes ficam em `tests/integration/deepgram-live.test.mjs` e pulam os casos cujas amostras não existirem.
+
+## Fechamento por risco aceito (2026-11-02)
+
+O proprietário fechou as validações manuais restantes **aceitando o risco**, sem executá-las no Chrome real (Princípio IV da constitution: limites aceitos podem ser registrados sem serem apresentados como testes realizados). Se algum problema aparecer, abrir um bugfix. O que **foi** validado no Chrome real: Blocos A e B do roteiro único (`sdd/validacao-chrome-real.md`, itens 1 a 10). O que **não** foi: Blocos C a H. Os itens pendentes listados nas seções anteriores deste relatório permanecem **não verificados**, apenas aceitos.
+

@@ -37,3 +37,7 @@ Teste e2e ("Deepgram: CloseStream entrega o trecho final..."): WebSocket simulad
 
 O resultado continua **partial**: a captura foi simulada (`--auto-select-desktop-capture-source`, dispositivos falsos) e o Deepgram foi simulado; o seletor nativo e o serviço real seguem sem verificação.
 
+## Addendum (2026-11-02): risco aceito
+
+O item 12 do roteiro único (última frase com o Deepgram real) **não foi executado**. O proprietário aceitou o risco em 2026-11-02: se o problema reaparecer, abrir um novo bugfix. O resultado permanece **partial**, e não é apresentado como verificado. O `CloseStream` está provado por e2e com WebSocket simulado e a chave real do Deepgram abriu o WebSocket ao vivo (handshake), sem fala em tempo real.
+

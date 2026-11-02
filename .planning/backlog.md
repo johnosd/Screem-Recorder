@@ -12,9 +12,9 @@ update-bug-status.ps1.
 
 | Slug | Título | Status | Progresso | Última Atualização |
 | --- | --- | --- | --- | --- |
-| 001-transcricao-pos-gravacao | Transcrição pós-gravação de vídeos e áudios | Convergência Pendente | 29/38 tasks | 2026-11-02 |
-| 002-escolha-provedor-transcricao | Escolha do provedor da transcrição pós-gravação | Convergência Pendente | 41/42 tasks | 2026-11-02 |
-| 003-dividir-gravacoes-longas | Divisão automática de gravações longas em partes | Convergência Pendente | 37/38 tasks | 2026-11-02 |
+| 001-transcricao-pos-gravacao | Transcrição pós-gravação de vídeos e áudios | Convergida | 38/38 tasks | 2026-11-02 |
+| 002-escolha-provedor-transcricao | Escolha do provedor da transcrição pós-gravação | Convergida | 42/42 tasks | 2026-11-02 |
+| 003-dividir-gravacoes-longas | Divisão automática de gravações longas em partes | Convergida | 38/38 tasks | 2026-11-02 |
 
 ## Melhorias Ad-hoc
 

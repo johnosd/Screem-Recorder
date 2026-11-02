@@ -119,3 +119,7 @@ A ponte de automação de interface desta sessão permaneceu indisponível, mas 
 
 `e2e/errors.spec.cjs` (8 testes, Chromium, ElevenLabs simulado) cobre na interface: chave ausente (orienta para ⚙ Configurações, sem requisição), sem conexão (com "Tentar novamente"), HTTP 429/503/504 com mensagens próprias, arquivo corrompido e vídeo sem áudio (falham localmente, sem requisição) e extensão/tipo discrepantes ou arquivo vazio recusados na seleção. Os estados de erro da interface deixam de estar pendentes no cenário 6; o serviço real continua sem verificação.
 
+## Fechamento por risco aceito (2026-11-02)
+
+O proprietário fechou as validações manuais restantes **aceitando o risco**, sem executá-las no Chrome real (Princípio IV da constitution: limites aceitos podem ser registrados sem serem apresentados como testes realizados). Se algum problema aparecer, abrir um bugfix. O que **foi** validado no Chrome real: Blocos A e B do roteiro único (`sdd/validacao-chrome-real.md`, itens 1 a 10). O que **não** foi: Blocos C a H. Os itens pendentes listados nas seções anteriores deste relatório permanecem **não verificados**, apenas aceitos.
+

@@ -65,3 +65,7 @@ Roteiro manual: `quickstart.md` §3 a §5.
 - **MP3** do modo áudio só em gravações de uma parte (DI-009, R-006).
 - **Falha da suíte completa (2026-11-02)**: numa execução de `npm run test:e2e` o teste "Baixar todas baixa as partes na ordem" falhou com duração de **14,6 min** (a execução inteira levou 20,7 min; o normal é 5 a 6 min e o timeout do teste é 60 s), o que indica a máquina ter ficado parada (suspensão) e não um defeito do app. Não foi tratado como "ok": o teste foi repetido 3 vezes isolado (11,3 s cada), o arquivo `parts.spec.cjs` passou inteiro (19/19, 2,9 min) e uma nova suíte completa passou **64/64 em 5,7 min**. Fica registrado como ocorrência única não reproduzida; se voltar a aparecer, investigar como instabilidade real.
 
+## Fechamento por risco aceito (2026-11-02)
+
+O proprietário fechou as validações manuais restantes **aceitando o risco**, sem executá-las no Chrome real (Princípio IV da constitution: limites aceitos podem ser registrados sem serem apresentados como testes realizados). Se algum problema aparecer, abrir um bugfix. O que **foi** validado no Chrome real: Blocos A e B do roteiro único (`sdd/validacao-chrome-real.md`, itens 1 a 10). O que **não** foi: Blocos C a H. Os itens pendentes listados nas seções anteriores deste relatório permanecem **não verificados**, apenas aceitos.
+
