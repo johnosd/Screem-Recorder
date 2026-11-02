@@ -73,6 +73,7 @@
 
 - [X] T011 [US1] Em `src/post-transcription-session.test.js`, cobrir fonte gravada, resultado anterior, cancelamento antes/depois da resposta e ausência de fala com metadados de vídeo/áudio (complemento aos contratos).
 - [ ] T012 [US1] Executar manualmente a parte P1 de `sdd/specs/001-transcricao-pos-gravacao/quickstart.md` no Chrome, incluindo gravação pausada e SRT contra reprodução; registrar separadamente o que depender de chave/cota/serviço real.
+  - Progresso (2026-11-02): a parte de **gravação, pausa e arquivo** do roteiro único (Bloco B) foi validada pelo proprietário no Chrome real. **Falta o Bloco D**: transcrição, TXT/SRT e SRT contra a reprodução, inclusive com gravação pausada.
 
 **Critério de Conclusão**: `npm test -- --runInBand src/post-transcription.contract.test.js` → 5/5 verdes e `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` íntegro; P1 demonstrável nos dois modos sem importação, com TXT/SRT sincronizado, cancelamento e mídia disponíveis. Validação Chrome/serviço registrada com limites explícitos.
 

@@ -46,7 +46,7 @@ Depois da verificação real das seções 5 e 6, continuam **sem** validação; 
 
 - O limite real de **2 GB** por arquivo do Deepgram: consta só na documentação (inviável de testar). **Limite aceito pelo proprietário em 2026-11-02** como documentado, sem verificação própria. A documentação traz também uma página de erros com limite de "2 MB" para outro contexto; o arquivo de 2,58 MB foi aceito, então esse limite não vale para o arquivo gravado.
 - Chave valendo no ao vivo mas não no arquivo gravado (ou o inverso): coberto no cenário feliz; não há como provocar o caso contrário.
-- Seletor nativo de captura e a gravação real de tela/áudio no Chrome (o e2e usa captura simulada).
+- ~~Seletor nativo de captura e a gravação real de tela/áudio no Chrome~~: **validado pelo proprietário em 2026-11-02** (Bloco B do roteiro único, `sdd/validacao-chrome-real.md`), sem detalhes por item.
 - Verificação visual no Chrome da lista "Serviço de transcrição" e do texto "Transcrito por …".
 
 Roteiro manual: `quickstart.md` §3.

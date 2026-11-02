@@ -4,7 +4,7 @@
 - **Testado**: 2026-11-02
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: verified
 
 ## Summary
 
@@ -36,4 +36,10 @@ Segurar — fechar a janela durante a gravação e depois de parar sem baixar; c
 Teste e2e ("fechar a janela gravando pede confirmação..."): o diálogo `beforeunload` do Chromium aparece com a gravação em andamento e depois de parar sem baixar, e deixa de aparecer após baixar o WebM. Também há o teste de recuperação ("gravação interrompida pela queda da janela é recuperada...").
 
 O resultado continua **partial**: a captura foi simulada (`--auto-select-desktop-capture-source`, dispositivos falsos) e o Deepgram foi simulado; o seletor nativo e o serviço real seguem sem verificação.
+
+## Addendum (2026-11-02): verificação no Chrome real
+
+Validado pelo proprietário no Chrome real, item 8 do roteiro (Bloco B) de `sdd/validacao-chrome-real.md`: Fechar a janela com a gravação em andamento, e com a gravação parada e **não baixada**, **pede confirmação** no Chrome; baixar o arquivo libera o fechamento. O diálogo real do Chrome (que só o e2e simulava) foi observado.
+
+O resultado passa de **partial** para **verified**: a reprodução original foi executada no Chrome real com captura nativa. O proprietário confirmou o resultado sem detalhar medições.
 

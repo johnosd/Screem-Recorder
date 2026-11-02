@@ -33,6 +33,6 @@ update-bug-status.ps1.
 
 | Slug | Título | Fase Atual | Veredito/Status | Próximo Passo | Última Atualização |
 | --- | --- | --- | --- | --- | --- |
-| audio-mode-ended-listener | Parar o compartilhamento não encerra a gravação em modo só áudio | Test | partial | Concluído (com ressalva) ou reabrir Assess | 2026-11-02 |
+| audio-mode-ended-listener | Parar o compartilhamento não encerra a gravação em modo só áudio | Test | verified | Concluído | 2026-11-02 |
 | deepgram-final-transcript-lost | Transcrição ao vivo perde o trecho final da fala | Test | partial | Concluído (com ressalva) ou reabrir Assess | 2026-11-02 |
-| unsaved-recording-lost-on-close | Fechar a janela perde a gravação sem aviso | Test | partial | Concluído (com ressalva) ou reabrir Assess | 2026-11-02 |
+| unsaved-recording-lost-on-close | Fechar a janela perde a gravação sem aviso | Test | verified | Concluído | 2026-11-02 |

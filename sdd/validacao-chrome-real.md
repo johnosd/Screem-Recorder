@@ -14,12 +14,14 @@ Reúne, em uma só sessão e em ordem, tudo o que as features 001, 002 e 003 e o
 | Bugs 1, 2 e 4 (relatórios em `sdd/bugs/`, resultado `partial`) | B, C |
 | Itens de análise sem Chrome: permissão do microfone (9), `nova-3` e KeepAlive reais, MP3 longo (6), seek do WebM (5) | B, C, F |
 
+**Progresso (2026-11-02)**: **Blocos A e B validados** pelo proprietário no Chrome real (itens 1 a 10). Pendentes: **C** (Deepgram ao vivo), **D** (transcrição posterior com os dois serviços), **E** (importar arquivos), **F** (MP3), **G** (divisão em partes) e **H** (recuperação após queda real).
+
 ---
 
 ## Preparação (5 min)
 
-- [ ] `npm run build`; em `chrome://extensions/` carregar a raiz do repositório (sem compactação) ou clicar em **Recarregar**. Sem erros na página da extensão.
-- [ ] Abrir a extensão. Em ⚙ **Configurações**, salvar a chave **Deepgram** e a **ElevenLabs** (as mesmas do `.env`).
+- [x] `npm run build`; em `chrome://extensions/` carregar a raiz do repositório (sem compactação) ou clicar em **Recarregar**. Sem erros na página da extensão.
+- [x] Abrir a extensão. Em ⚙ **Configurações**, salvar a chave **Deepgram** e a **ElevenLabs** (as mesmas do `.env`).
 - [ ] Ter à mão: um vídeo qualquer para reproduzir durante a captura (YouTube, por exemplo), um trecho seu falando em **português** e outro em **inglês**, e (opcional) um arquivo de vídeo sem áudio e um arquivo qualquer que não seja mídia.
 - [ ] Abrir o Gerenciador de tarefas do Chrome (`Shift+Esc`) para acompanhar memória durante os blocos F e G.
 
@@ -27,12 +29,12 @@ Reúne, em uma só sessão e em ordem, tudo o que as features 001, 002 e 003 e o
 
 ## Bloco A: Configurações e interface (10 min)
 
-1. [ ] **Chaves**: ao abrir ⚙ Configurações, os dois campos voltam **preenchidos e ocultos**; o ícone de olho mostra e oculta; o texto ao lado diz "✓ … salva". Apagar um campo mostra "Campo vazio — a chave salva continua em uso"; digitar outra mostra "Alterações não salvas".
-   Resultado: ______
-2. [ ] **Qualidade**: escolher Alta, Equilibrada e Econômica; o texto descreve resolução, fps e bitrates; ao recarregar a janela a escolha permanece.
-   Resultado: ______
-3. [ ] **Fontes locais**: com a internet **desligada**, abrir a janela; a tipografia (DM Sans e JetBrains Mono) aparece normal, sem requisições ao Google Fonts na aba Network.
-   Resultado: ______
+1. [x] **Chaves**: ao abrir ⚙ Configurações, os dois campos voltam **preenchidos e ocultos**; o ícone de olho mostra e oculta; o texto ao lado diz "✓ … salva". Apagar um campo mostra "Campo vazio — a chave salva continua em uso"; digitar outra mostra "Alterações não salvas".
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+2. [x] **Qualidade**: escolher Alta, Equilibrada e Econômica; o texto descreve resolução, fps e bitrates; ao recarregar a janela a escolha permanece.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+3. [x] **Fontes locais**: com a internet **desligada**, abrir a janela; a tipografia (DM Sans e JetBrains Mono) aparece normal, sem requisições ao Google Fonts na aba Network.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
 
 ---
 
@@ -40,20 +42,20 @@ Reúne, em uma só sessão e em ordem, tudo o que as features 001, 002 e 003 e o
 
 Deixe a qualidade em **Equilibrada** e a transcrição ao vivo **desligada**.
 
-4. [ ] **Permissão do microfone com a janela minimizada** (item 9): com o microfone **ainda não autorizado** para a extensão (`chrome://settings/content/microphone`, remover a permissão se existir), clicar em Iniciar Gravação. O aviso de permissão do microfone **aparece e dá para aceitar** mesmo com a janela minimizada? Se ficar escondido, anote exatamente o que aconteceu.
-   Resultado: ______
-5. [ ] **Seletor nativo** abre; escolher uma **aba com áudio** (vídeo tocando). A janela minimiza e não aparece na captura.
-   Resultado: ______
-6. [ ] **Pausa e retomada**: pausar 5 s e retomar; o cronômetro não conta a pausa.
-   Resultado: ______
-7. [ ] **Parar** e esperar "Arquivo .webm pronto". Baixar o `.webm` e abrir num player (VLC ou o próprio Chrome): aparece **duração** e dá para **avançar/voltar** o vídeo (item 5). Áudio do sistema e do microfone presentes.
-   Resultado: ______
-8. [ ] **Aviso de saída** (bug 4): gravar de novo e tentar **fechar a janela** com a gravação em andamento: o Chrome pede confirmação. Cancelar. Parar, **sem baixar**, e tentar fechar: pede de novo. Baixar o arquivo e fechar: não pede.
-   Resultado: ______
-9. [ ] **Parar compartilhamento em modo Só Áudio** (bug 1): escolher **Só Áudio**, iniciar, e clicar em **"Parar compartilhamento"** na barra do Chrome. A gravação **encerra sozinha** e a tela final aparece com o arquivo.
-   Resultado: ______
-10. [ ] **Qualidade**: gravar 15 s em **Econômica** e em **Alta** e conferir (pelo tamanho do arquivo) que Econômica é bem menor.
-    Resultado: ______
+4. [x] **Permissão do microfone com a janela minimizada** (item 9): com o microfone **ainda não autorizado** para a extensão (`chrome://settings/content/microphone`, remover a permissão se existir), clicar em Iniciar Gravação. O aviso de permissão do microfone **aparece e dá para aceitar** mesmo com a janela minimizada? Se ficar escondido, anote exatamente o que aconteceu.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+5. [x] **Seletor nativo** abre; escolher uma **aba com áudio** (vídeo tocando). A janela minimiza e não aparece na captura.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+6. [x] **Pausa e retomada**: pausar 5 s e retomar; o cronômetro não conta a pausa.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+7. [x] **Parar** e esperar "Arquivo .webm pronto". Baixar o `.webm` e abrir num player (VLC ou o próprio Chrome): aparece **duração** e dá para **avançar/voltar** o vídeo (item 5). Áudio do sistema e do microfone presentes.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+8. [x] **Aviso de saída** (bug 4): gravar de novo e tentar **fechar a janela** com a gravação em andamento: o Chrome pede confirmação. Cancelar. Parar, **sem baixar**, e tentar fechar: pede de novo. Baixar o arquivo e fechar: não pede.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+9. [x] **Parar compartilhamento em modo Só Áudio** (bug 1): escolher **Só Áudio**, iniciar, e clicar em **"Parar compartilhamento"** na barra do Chrome. A gravação **encerra sozinha** e a tela final aparece com o arquivo.
+   Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
+10. [x] **Qualidade**: gravar 15 s em **Econômica** e em **Alta** e conferir (pelo tamanho do arquivo) que Econômica é bem menor.
+    Resultado: validado pelo proprietário (2026-11-02), sem detalhes por item
 
 ---
 
