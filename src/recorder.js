@@ -1,6 +1,13 @@
 import { fmt } from './utils/timer.js';
 import { createPostTranscriptionSession } from './post-transcription-session.js';
 import { transcribePreRecorded } from './post-transcription-client.js';
+import { closeDeepgramSocket, startKeepAlive } from './deepgram-live.js';
+import { downloadBlob, timestamp } from './utils/download.js';
+import { floatToInt16 } from './mp3-encode.js';
+import { createUnloadGuard } from './unload-guard.js';
+import { finalizeWebm } from './webm-finalize.js';
+import { DEFAULT_QUALITY, QUALITY_PRESETS, buildDisplayConstraints, buildRecorderOptions,
+  pickMimeType, resolveQuality } from './recording-profile.js';
 import { buildSrt, groupCaptionSegments, validSegments, validSrt } from './subtitles.js';
 
 
@@ -32,6 +39,12 @@ let recordedBlob = null;
 let stopping = false;
 let wasPaused = false;
 let postSession;
+let transcriptClosing = Promise.resolve();
+let unsavedRecording = false;
+let quality = DEFAULT_QUALITY;
+let transcriptPaused = false;
+let stopKeepAlive = null;
+let showErrTimer = null;
 
 // ---- DOM ----
 const $ = (s) => document.getElementById(s) || document.querySelector(s);
@@ -114,6 +127,8 @@ function resetPostSession() {
 
 resetPostSession();
 
+const MAX_LOG_LINES = 300;
+
 // ---- Helpers ----
 function view(name) {
   [vIdle, vRec, vDone].forEach(v => v.classList.remove('on'));
@@ -126,13 +141,15 @@ function log(msg) {
   const line = document.createElement('div');
   line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
   logEl.appendChild(line);
+  while (logEl.childElementCount > MAX_LOG_LINES) logEl.firstElementChild.remove();
   logEl.scrollTop = logEl.scrollHeight;
 }
 
 function showErr(msg) {
   errEl.textContent = msg;
   errEl.classList.add('on');
-  setTimeout(() => errEl.classList.remove('on'), 10000);
+  clearTimeout(showErrTimer);
+  showErrTimer = setTimeout(() => errEl.classList.remove('on'), 10000);
 }
 
 function showWarn(msg) {
@@ -174,11 +191,7 @@ btnStart.addEventListener('click', async () => {
 
     // getDisplayMedia with selfBrowserSurface:'exclude' hides this tab from the picker
     captureStream = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        width: { max: 1920 },
-        height: { max: 1080 },
-        frameRate: { max: 30 }
-      },
+      video: buildDisplayConstraints(quality),
       audio: true,
       selfBrowserSurface: 'exclude'
     });
@@ -243,24 +256,15 @@ btnStart.addEventListener('click', async () => {
     finalStream.getTracks().forEach(t => log(`  ${t.kind}: "${t.label}" enabled=${t.enabled}`));
 
     // 4. MediaRecorder
-    const mime = mode === 'video'
-      ? (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus'
-        : 'video/webm')
-      : (MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
-        : 'audio/webm');
+    const mime = pickMimeType(mode, type => MediaRecorder.isTypeSupported(type));
 
-    log('MIME: ' + mime);
+    log(`MIME: ${mime} (qualidade: ${quality})`);
 
     chunks = [];
     recordedBlob = null;
     stopping = false;
     wasPaused = false;
-    mediaRecorder = new MediaRecorder(finalStream, {
-      mimeType: mime,
-      videoBitsPerSecond: mode === 'video' ? 5000000 : undefined,
-      audioBitsPerSecond: 128000
-    });
+    mediaRecorder = new MediaRecorder(finalStream, buildRecorderOptions(mode, mime, quality));
     const recorderForSession = mediaRecorder;
 
     mediaRecorder.ondataavailable = (e) => {
@@ -269,24 +273,38 @@ btnStart.addEventListener('click', async () => {
       }
     };
 
-    mediaRecorder.onstop = () => {
+    mediaRecorder.onstop = async () => {
       if (mediaRecorder !== recorderForSession) return;
       const totalBytes = chunks.reduce((s, c) => s + c.size, 0);
       log(`Recorder stopped. ${chunks.length} chunks, ${(totalBytes/1024/1024).toFixed(2)} MB`);
       if (!totalBytes) {
+        unsavedRecording = false;
         doneSub.textContent = 'Gravação vazia. Tente novamente.';
         return;
       }
-      recordedBlob = new Blob(chunks, { type: mode === 'video' ? 'video/webm' : 'audio/webm' });
+      doneSub.textContent = 'Finalizando arquivo...';
+      const rawBlob = new Blob(chunks, { type: mode === 'video' ? 'video/webm' : 'audio/webm' });
+      // Regrava o contêiner (sem recodificar) para o arquivo ter duração e permitir seek.
+      const finalBlob = await finalizeWebm(rawBlob);
+      if (mediaRecorder !== recorderForSession) return;
+      if (finalBlob === rawBlob) log('WebM mantido como gravado (remux indisponível)');
+      recordedBlob = finalBlob;
       postSession.setSource({ blob: recordedBlob, name: `${recordingFilename}.webm`,
         origin: 'recorded', kind: mode });
-      if (transcriptFull.trim()) {
-        postSession.setExistingTranscript({ text: transcriptFull.trim(), segments: transcriptSegments,
-          language: transcriptLang, origin: 'live' });
-      }
       doneSub.textContent = 'Arquivo .webm pronto';
       btnDl.disabled = false;
       btnDlMp3.disabled = false;
+      // Aguarda o Deepgram entregar os últimos resultados antes de fixar o texto ao vivo.
+      await transcriptClosing;
+      if (mediaRecorder !== recorderForSession) return;
+      if (transcriptFull.trim()) {
+        try {
+          postSession.setExistingTranscript({ text: transcriptFull.trim(), segments: transcriptSegments,
+            language: transcriptLang, origin: 'live' });
+        } catch (error) {
+          log('Transcrição ao vivo não aplicada: ' + error.message);
+        }
+      }
     };
 
     mediaRecorder.onerror = (e) => {
@@ -294,8 +312,8 @@ btnStart.addEventListener('click', async () => {
       showErr('Erro no MediaRecorder');
     };
 
-    // If user stops sharing via Chrome native button
-    finalStream.getVideoTracks().forEach(t => {
+    // If user stops sharing via Chrome native button (a faixa de vídeo existe em ambos os modos)
+    captureStream.getVideoTracks().forEach(t => {
       t.addEventListener('ended', () => {
         log('Video track ended (user stopped sharing)');
         doStop();
@@ -354,6 +372,9 @@ btnPause.addEventListener('click', () => {
     paused = true;
     wasPaused = true;
     pauseStart = Date.now();
+    // Sem áudio na pausa: o Deepgram não transcreve o que não entra no arquivo.
+    transcriptPaused = true;
+    if (deepgramSocket) stopKeepAlive = startKeepAlive(deepgramSocket);
     clearInterval(timerInterval);
     timerInterval = null;
     setRecUI('pau');
@@ -361,6 +382,8 @@ btnPause.addEventListener('click', () => {
   } else {
     mediaRecorder.resume();
     paused = false;
+    transcriptPaused = false;
+    stopKeepAlive?.(); stopKeepAlive = null;
     if (pauseStart) { pausedMs += Date.now() - pauseStart; pauseStart = null; }
     timerInterval = setInterval(() => {
       timer.textContent = fmt(Date.now() - startTime - pausedMs);
@@ -393,7 +416,8 @@ function doStop() {
   if (mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
-  stopTranscription();
+  transcriptClosing = stopTranscription();
+  unsavedRecording = true;
   cleanup();
 
   chrome.windows.getCurrent(win => {
@@ -401,8 +425,7 @@ function doStop() {
   });
   paused = false;
 
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  recordingFilename = `${mode === 'video' ? 'gravacao-video' : 'gravacao-audio'}_${ts}`;
+  recordingFilename = `${mode === 'video' ? 'gravacao-video' : 'gravacao-audio'}_${timestamp()}`;
   $('done-title').textContent = 'Gravação Concluída';
   doneLabel.textContent = mode === 'video' ? 'Vídeo + Áudio' : 'Só Áudio';
   doneDur.textContent = 'Duração: ' + finalDur;
@@ -420,54 +443,35 @@ function doStop() {
 btnDl.addEventListener('click', () => {
   if (!recordedBlob) { doneSub.textContent = 'Aguardando finalização da gravação.'; return; }
   const blob = recordedBlob;
+  unsavedRecording = false;
   log('Download: ' + (blob.size / 1024 / 1024).toFixed(2) + ' MB');
 
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${recordingFilename}.webm`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 15000);
+  downloadBlob(blob, `${recordingFilename}.webm`);
 });
 
 // ---- ENCODE MP3 ----
-async function encodeMp3(webmBlob) {
+// A decodificação fica na página (AudioContext não existe em Worker); a codificação roda no worker.
+async function encodeMp3(webmBlob, onProgress) {
   const arrayBuffer = await webmBlob.arrayBuffer();
-  const audioCtx = new AudioContext();
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  await audioCtx.close();
+  const decodeCtx = new AudioContext();
+  const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+  await decodeCtx.close();
 
-  const channels = audioBuffer.numberOfChannels;
-  const sampleRate = audioBuffer.sampleRate;
-  const encoder = new lamejs.Mp3Encoder(channels, sampleRate, 128);
+  const left = floatToInt16(audioBuffer.getChannelData(0));
+  const right = audioBuffer.numberOfChannels > 1 ? floatToInt16(audioBuffer.getChannelData(1)) : null;
 
-  function toInt16(floatArr) {
-    const int16 = new Int16Array(floatArr.length);
-    for (let i = 0; i < floatArr.length; i++) {
-      const s = Math.max(-1, Math.min(1, floatArr[i]));
-      int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-    }
-    return int16;
-  }
-
-  const left = toInt16(audioBuffer.getChannelData(0));
-  const right = channels > 1 ? toInt16(audioBuffer.getChannelData(1)) : left;
-
-  const mp3Chunks = [];
-  const blockSize = 1152;
-  for (let i = 0; i < left.length; i += blockSize) {
-    const encoded = encoder.encodeBuffer(
-      left.subarray(i, i + blockSize),
-      right.subarray(i, i + blockSize)
-    );
-    if (encoded.length > 0) mp3Chunks.push(encoded);
-  }
-  const flushed = encoder.flush();
-  if (flushed.length > 0) mp3Chunks.push(flushed);
-
-  return new Blob(mp3Chunks, { type: 'audio/mpeg' });
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(chrome.runtime.getURL('dist/mp3-worker.bundle.js'));
+    worker.onmessage = ({ data }) => {
+      if (data.type === 'progress') { onProgress?.(data.progress); return; }
+      worker.terminate();
+      if (data.type === 'done') resolve(data.blob);
+      else reject(new Error(data.message));
+    };
+    worker.onerror = (e) => { worker.terminate(); reject(new Error(e.message || 'Falha no worker de MP3')); };
+    const transfer = [left.buffer, ...(right ? [right.buffer] : [])];
+    worker.postMessage({ left, right, sampleRate: audioBuffer.sampleRate, kbps: 128 }, transfer);
+  });
 }
 
 // ---- DOWNLOAD MP3 ----
@@ -478,18 +482,13 @@ btnDlMp3.addEventListener('click', async () => {
   btnDlMp3.textContent = 'Convertendo…';
   try {
     const webmBlob = recordedBlob;
-    const mp3Blob = await encodeMp3(webmBlob);
+    const mp3Blob = await encodeMp3(webmBlob, progress => {
+      btnDlMp3.textContent = `Convertendo… ${Math.round(progress * 100)}%`;
+    });
+    unsavedRecording = false;
     log('MP3: ' + (mp3Blob.size / 1024 / 1024).toFixed(2) + ' MB');
 
-    const url = URL.createObjectURL(mp3Blob);
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gravacao-audio_${ts}.mp3`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    downloadBlob(mp3Blob, `gravacao-audio_${timestamp()}.mp3`);
   } catch (e) {
     log('MP3 error: ' + e.message);
     showErr('Erro ao converter para MP3: ' + e.message);
@@ -504,6 +503,7 @@ btnDiscard.addEventListener('click', () => {
   chunks = [];
   recordedBlob = null;
   mediaRecorder = null;
+  unsavedRecording = false;
   resetPostSession();
   $('import-file').value = '';
   cleanup();
@@ -537,7 +537,7 @@ async function startTranscription(stream) {
   }
 
   deepgramSocket = new WebSocket(
-    `wss://api.deepgram.com/v1/listen?language=${transcriptLang}&model=nova-2&punctuate=true&interim_results=true&encoding=linear16&sample_rate=16000`,
+    `wss://api.deepgram.com/v1/listen?language=${transcriptLang}&model=nova-3&punctuate=true&interim_results=true&encoding=linear16&sample_rate=16000`,
     ['token', apiKey]
   );
 
@@ -550,7 +550,7 @@ async function startTranscription(stream) {
       audioWorkletNode = new AudioWorkletNode(transcriptAudioCtx, 'audio-collector');
       source.connect(audioWorkletNode);
       audioWorkletNode.port.onmessage = (e) => {
-        if (deepgramSocket?.readyState === WebSocket.OPEN) {
+        if (!transcriptPaused && deepgramSocket?.readyState === WebSocket.OPEN) {
           deepgramSocket.send(e.data);
         }
       };
@@ -578,12 +578,16 @@ async function startTranscription(stream) {
 }
 
 function stopTranscription() {
+  stopKeepAlive?.(); stopKeepAlive = null;
+  transcriptPaused = false;
   if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
-  if (deepgramSocket) { deepgramSocket.close(); deepgramSocket = null; }
+  const socket = deepgramSocket;
+  deepgramSocket = null;
   if (transcriptAudioCtx && transcriptAudioCtx.state !== 'closed') {
     transcriptAudioCtx.close().catch(() => {});
     transcriptAudioCtx = null;
   }
+  return closeDeepgramSocket(socket);
 }
 
 function updateTranscriptLive(text) {
@@ -651,16 +655,8 @@ document.getElementById('btn-save-key').addEventListener('click', async () => {
 document.getElementById('btn-dl-txt').addEventListener('click', () => {
   const transcript = postSession.getSnapshot().transcript;
   if (!transcript?.text?.trim()) return;
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const blob = new Blob([transcript.text.trim()], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `transcricao_${ts}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 15000);
+  downloadBlob(new Blob([transcript.text.trim()], { type: 'text/plain;charset=utf-8' }),
+    `transcricao_${timestamp()}.txt`);
 });
 
 document.getElementById('btn-dl-srt').addEventListener('click', () => {
@@ -670,15 +666,7 @@ document.getElementById('btn-dl-srt').addEventListener('click', () => {
     : validSegments(transcript?.segments) ? buildSrt(transcript.origin === 'post'
       ? groupCaptionSegments(transcript.segments) : transcript.segments) : null;
   if (!srt) return;
-  const blob = new Blob([srt], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${recordingFilename}.srt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 15000);
+  downloadBlob(new Blob([srt], { type: 'text/plain;charset=utf-8' }), `${recordingFilename}.srt`);
 });
 
 $('post-start').addEventListener('click', async () => {
@@ -728,6 +716,27 @@ $('import-file').addEventListener('change', event => {
   btnDiscard.textContent = 'Selecionar outro arquivo';
   view('done');
 });
+
+// ---- Quality ----
+function applyQuality(name) {
+  quality = resolveQuality(name);
+  document.querySelectorAll('.qbtn').forEach(b => b.classList.toggle('on', b.dataset.q === quality));
+  const p = QUALITY_PRESETS[quality];
+  $('quality-desc').textContent = `Formato WebM (VP9 + Opus). ${p.label}: até ${p.height}p a ${p.frameRate} fps, ` +
+    `vídeo ${p.videoBitsPerSecond / 1_000_000} Mbps, áudio ${p.audioBitsPerSecond / 1000} kbps.`;
+}
+
+document.querySelectorAll('.qbtn').forEach(btn => btn.addEventListener('click', () => {
+  applyQuality(btn.dataset.q);
+  chrome.storage.local.set({ recordingQuality: quality });
+  log('Qualidade: ' + quality);
+}));
+
+chrome.storage.local.get('recordingQuality', r => applyQuality(r.recordingQuality));
+
+// ---- Exit guard ----
+createUnloadGuard(window, () =>
+  (mediaRecorder && mediaRecorder.state !== 'inactive') || unsavedRecording);
 
 // ---- Init ----
 getApiKey().then(k => {

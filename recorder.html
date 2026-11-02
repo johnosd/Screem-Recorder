@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Screen Recorder</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap');
+    @font-face { font-family: 'DM Sans'; font-style: normal; font-weight: 400 700; font-display: swap;
+      src: url('fonts/dm-sans-latin.woff2') format('woff2'); }
+    @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 700; font-display: swap;
+      src: url('fonts/jetbrains-mono-latin.woff2') format('woff2'); }
 
     :root {
       --bg: #08080d;
@@ -251,6 +254,14 @@
       font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.15s;
     }
     .lbtn:hover { color: var(--text); }
+    .quality-row { display: flex; gap: 6px; margin-top: 10px; }
+    .qbtn {
+      flex: 1; padding: 7px 0; border: 1px solid var(--border);
+      background: transparent; color: var(--text3); font-family: inherit;
+      font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .qbtn:hover { color: var(--text); }
+    .qbtn.on { background: var(--bg4); color: var(--text); border-color: var(--accent); }
     .lbtn.on { background: var(--bg4); color: var(--text); border-color: var(--accent); }
     .key-status {
       margin-top: 8px; font-size: 11px; font-weight: 600;
@@ -324,7 +335,16 @@
     <div id="v-settings" class="settings">
       <div class="hdr">
         <div class="hdr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></div>
-        <div><h1>Configurações</h1><p>Chaves de API das transcrições</p></div>
+        <div><h1>Configurações</h1><p>Qualidade da gravação e chaves de API</p></div>
+      </div>
+      <div class="settings-sec">
+        <h3>Qualidade da gravação</h3>
+        <p id="quality-desc">Formato WebM (VP9 + Opus).</p>
+        <div class="quality-row">
+          <button class="qbtn" data-q="alta">Alta</button>
+          <button class="qbtn on" data-q="equilibrada">Equilibrada</button>
+          <button class="qbtn" data-q="economica">Econômica</button>
+        </div>
       </div>
       <div class="settings-sec">
         <h3>Deepgram</h3>

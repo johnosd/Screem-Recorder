@@ -91,6 +91,39 @@ test('engrenagem abre configurações com as chaves de API e volta à tela anter
   });
 });
 
+test('qualidade da gravação escolhida nas configurações persiste ao reabrir a página', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ page }) => {
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('.qbtn.on')).toHaveAttribute('data-q', 'equilibrada');
+    await page.locator('.qbtn[data-q="economica"]').click();
+    await expect(page.locator('#quality-desc')).toContainText('720p');
+    await page.reload();
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('.qbtn.on')).toHaveAttribute('data-q', 'economica');
+  });
+});
+
+test('worker de MP3 codifica PCM em MP3 e a página não pede fontes externas', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ page, events }) => {
+    const result = await page.evaluate(() => new Promise((resolve, reject) => {
+      const worker = new Worker(chrome.runtime.getURL('dist/mp3-worker.bundle.js'));
+      const progress = [];
+      worker.onerror = e => reject(new Error(e.message));
+      worker.onmessage = ({ data }) => {
+        if (data.type === 'progress') progress.push(data.progress);
+        else if (data.type === 'done') resolve({ type: data.blob.type, size: data.blob.size, progress: progress.length });
+        else reject(new Error(data.message));
+      };
+      const left = new Int16Array(48000 * 2).map((_, i) => Math.round(Math.sin(i / 20) * 12000));
+      worker.postMessage({ left, right: left.slice(), sampleRate: 48000, kbps: 128 });
+    }));
+    expect(result.type).toBe('audio/mpeg');
+    expect(result.size).toBeGreaterThan(1000);
+    expect(result.progress).toBeGreaterThan(0);
+    expect(events.filter(e => e.origin === 'network' && /googleapis|gstatic/.test(e.url || ''))).toEqual([]);
+  });
+});
+
 test('importa WebM, envia só áudio após clique e gera TXT/SRT', async ({}, testInfo) => {
   await withExtension(testInfo, async ({ context, page, events }) => {
     let requests = 0;
