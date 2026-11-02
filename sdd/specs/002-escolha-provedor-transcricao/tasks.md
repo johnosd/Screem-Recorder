@@ -213,3 +213,11 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 3. US2 (contrato da sessão), US3 (preferência), Polish e validação real quando houver chave e Chrome.
 
 <!-- sdd-converge anexa "## Phase N: Convergence" abaixo desta linha -->
+
+## Phase 7: Convergence
+
+**Propósito**: lacunas achadas por `sdd-converge` em 2026-11-02, depois da verificação real do Deepgram. Nenhuma task acima foi alterada. Não há mudança de código pendente; as três tasks são validações.
+
+- [ ] T030 [Shared] Executar o Deepgram real com mídia **com fala audível** nos formatos ainda não provados com fala: MP4 (AAC), MP3 e áudio WebM, em pt-BR, e uma fala curta em **inglês**; conferir texto, tempos por palavra e SRT, e registrar em `qa-evidence.md` §5, sem chave nem texto transcrito (SC-001; FR-005).
+- [ ] T031 [Shared] Fechar as incertezas de limite e erro do Deepgram: confirmar na documentação ou com a conta o código HTTP de créditos esgotados e o limite real de arquivo, testar um arquivo longo (vários minutos) para medir tempo e `TIMEOUT`, e conferir que a chave serve ao ao vivo e ao arquivo gravado; o que não puder ser exercitado fica registrado como limite aceito pelo proprietário em `qa-evidence.md` (FR-011; plan: R-002, R-007).
+- [ ] T032 [Shared] Executar no Chrome real o roteiro do `quickstart.md` §3 (seletor nativo de captura, escolha do serviço, aviso, "Transcrito por …", retranscrição e persistência), com as chaves reais, e registrar o resultado em `qa-evidence.md` (Constitution IV; SC-002, SC-004, SC-005).
