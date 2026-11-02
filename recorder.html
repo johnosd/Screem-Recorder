@@ -197,6 +197,19 @@
     }
     .warn.on { display: block; }
 
+    .recovery {
+      margin: 0 24px 14px; padding: 11px 14px;
+      background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 10px; font-size: 12px; color: var(--yellow); line-height: 1.4;
+    }
+    .recovery-btns { display: flex; gap: 6px; margin-top: 10px; }
+    .rbtn {
+      flex: 1; padding: 7px 0; border: 1px solid var(--border);
+      background: var(--bg3); color: var(--text2); font-family: inherit;
+      font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .rbtn:hover { color: var(--text); background: var(--bg4); }
+
     /* Done card */
     .done-card {
       background: var(--bg3); border: 1px solid var(--border);
@@ -394,6 +407,13 @@
           <span>Ao clicar em gravar, o Chrome abrirá um seletor. Escolha a <b>aba ou tela</b>. O áudio do sistema será capturado automaticamente.</span>
         </div>
         <div id="err" class="err"></div>
+      </div>
+      <div id="recovery" class="recovery hidden">
+        <span id="recovery-text"></span>
+        <div class="recovery-btns">
+          <button id="recovery-restore" class="rbtn">Recuperar</button>
+          <button id="recovery-discard" class="rbtn">Descartar</button>
+        </div>
       </div>
       <div class="transcript-config">
         <label class="toggle-label">

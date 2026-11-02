@@ -6,6 +6,7 @@ import { downloadBlob, timestamp } from './utils/download.js';
 import { floatToInt16 } from './mp3-encode.js';
 import { createUnloadGuard } from './unload-guard.js';
 import { finalizeWebm } from './webm-finalize.js';
+import { openRecoveryStore } from './recovery-store.js';
 import { DEFAULT_QUALITY, QUALITY_PRESETS, buildDisplayConstraints, buildRecorderOptions,
   pickMimeType, resolveQuality } from './recording-profile.js';
 import { buildSrt, groupCaptionSegments, validSegments, validSrt } from './subtitles.js';
@@ -45,6 +46,7 @@ let quality = DEFAULT_QUALITY;
 let transcriptPaused = false;
 let stopKeepAlive = null;
 let showErrTimer = null;
+let recovery = null;
 
 // ---- DOM ----
 const $ = (s) => document.getElementById(s) || document.querySelector(s);
@@ -128,6 +130,13 @@ function resetPostSession() {
 resetPostSession();
 
 const MAX_LOG_LINES = 300;
+
+// ---- Recuperação ----
+// A gravação em andamento é copiada em IndexedDB; a cópia só é apagada quando o arquivo é baixado ou descartado.
+function markSaved() {
+  unsavedRecording = false;
+  recovery?.clear().catch(error => log('Falha ao limpar cópia de segurança: ' + error.message));
+}
 
 // ---- Helpers ----
 function view(name) {
@@ -260,6 +269,14 @@ btnStart.addEventListener('click', async () => {
 
     log(`MIME: ${mime} (qualidade: ${quality})`);
 
+    try {
+      await recovery?.startSession({ mode, type: mime.split(';')[0], startedAt: Date.now() });
+    } catch (error) {
+      log('Cópia de segurança indisponível: ' + error.message);
+      recovery = null;
+    }
+    $('recovery').classList.add('hidden');
+
     chunks = [];
     recordedBlob = null;
     stopping = false;
@@ -270,6 +287,7 @@ btnStart.addEventListener('click', async () => {
     mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
         chunks.push(e.data);
+        recovery?.appendChunk(e.data).catch(error => log('Cópia de segurança falhou: ' + error.message));
       }
     };
 
@@ -278,7 +296,7 @@ btnStart.addEventListener('click', async () => {
       const totalBytes = chunks.reduce((s, c) => s + c.size, 0);
       log(`Recorder stopped. ${chunks.length} chunks, ${(totalBytes/1024/1024).toFixed(2)} MB`);
       if (!totalBytes) {
-        unsavedRecording = false;
+        markSaved();
         doneSub.textContent = 'Gravação vazia. Tente novamente.';
         return;
       }
@@ -443,7 +461,7 @@ function doStop() {
 btnDl.addEventListener('click', () => {
   if (!recordedBlob) { doneSub.textContent = 'Aguardando finalização da gravação.'; return; }
   const blob = recordedBlob;
-  unsavedRecording = false;
+  markSaved();
   log('Download: ' + (blob.size / 1024 / 1024).toFixed(2) + ' MB');
 
   downloadBlob(blob, `${recordingFilename}.webm`);
@@ -485,7 +503,7 @@ btnDlMp3.addEventListener('click', async () => {
     const mp3Blob = await encodeMp3(webmBlob, progress => {
       btnDlMp3.textContent = `Convertendo… ${Math.round(progress * 100)}%`;
     });
-    unsavedRecording = false;
+    markSaved();
     log('MP3: ' + (mp3Blob.size / 1024 / 1024).toFixed(2) + ' MB');
 
     downloadBlob(mp3Blob, `gravacao-audio_${timestamp()}.mp3`);
@@ -503,7 +521,7 @@ btnDiscard.addEventListener('click', () => {
   chunks = [];
   recordedBlob = null;
   mediaRecorder = null;
-  unsavedRecording = false;
+  markSaved();
   resetPostSession();
   $('import-file').value = '';
   cleanup();
@@ -734,6 +752,62 @@ document.querySelectorAll('.qbtn').forEach(btn => btn.addEventListener('click', 
 
 chrome.storage.local.get('recordingQuality', r => applyQuality(r.recordingQuality));
 
+// ---- Recover interrupted recording ----
+async function offerRecovery() {
+  try {
+    recovery = await openRecoveryStore();
+    const session = await recovery.loadSession();
+    if (!session) return;
+    const when = session.meta.startedAt ? new Date(session.meta.startedAt).toLocaleString() : 'data desconhecida';
+    const mb = (session.blob.size / 1024 / 1024).toFixed(1);
+    $('recovery-text').textContent = `Encontrada uma gravação interrompida (${when}, ${mb} MB). ` +
+      'Iniciar uma nova gravação descarta esta cópia.';
+    $('recovery').classList.remove('hidden');
+    $('recovery-restore').onclick = () => restoreRecording(session);
+    $('recovery-discard').onclick = () => {
+      markSaved();
+      $('recovery').classList.add('hidden');
+      log('Gravação interrompida descartada');
+    };
+  } catch (error) {
+    log('Cópia de segurança indisponível: ' + error.message);
+    recovery = null;
+  }
+}
+
+async function restoreRecording({ meta, blob }) {
+  $('recovery-restore').disabled = true;
+  try {
+    const finalBlob = await finalizeWebm(blob);
+    mode = meta.mode === 'audio' ? 'audio' : 'video';
+    chunks = [];
+    mediaRecorder = null;
+    stopping = false;
+    wasPaused = false;
+    recordedBlob = finalBlob;
+    recordingFilename = `${mode === 'video' ? 'gravacao-video' : 'gravacao-audio'}_recuperada_${timestamp(new Date(meta.startedAt || Date.now()))}`;
+    resetPostSession();
+    postSession.setSource({ blob: finalBlob, name: `${recordingFilename}.webm`, origin: 'recorded', kind: mode });
+    unsavedRecording = true;
+    $('done-title').textContent = 'Gravação recuperada';
+    doneLabel.textContent = mode === 'video' ? 'Vídeo + Áudio' : 'Só Áudio';
+    doneDur.textContent = 'Duração: não registrada';
+    doneSub.textContent = 'Arquivo .webm pronto';
+    btnDl.disabled = false;
+    btnDlMp3.disabled = false;
+    btnDl.style.display = '';
+    btnDlMp3.style.display = mode === 'audio' ? '' : 'none';
+    btnDiscard.textContent = 'Descartar';
+    $('recovery').classList.add('hidden');
+    view('done');
+    log('Gravação interrompida recuperada');
+  } catch (error) {
+    showErr('Não foi possível recuperar a gravação: ' + error.message);
+  } finally {
+    $('recovery-restore').disabled = false;
+  }
+}
+
 // ---- Exit guard ----
 createUnloadGuard(window, () =>
   (mediaRecorder && mediaRecorder.state !== 'inactive') || unsavedRecording);
@@ -751,4 +825,5 @@ getApiKey().then(k => {
 getElevenLabsKey().then(k => {
   $('post-key-status').textContent = k ? 'Chave ElevenLabs salva localmente.' : 'Chave ElevenLabs ainda não configurada.';
 });
+offerRecovery();
 log('Recorder page loaded. Ready.');

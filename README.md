@@ -91,7 +91,7 @@ A transcrição ao vivo envia áudio da captura à [Deepgram](https://deepgram.c
 4. Acompanhe a preparação e o aguardo da resposta. É possível cancelar ou tentar novamente. Uma falha preserva a mídia e o texto anterior da janela.
 5. Após uma transcrição com texto, baixe TXT e SRT. O app gera legendas locais agrupadas em frases curtas usando os tempos por palavra retornados pela ElevenLabs. Palavras sem tempo próprio são associadas às vizinhas; esses trechos têm sincronização aproximada, informada na tela. Se não houver intervalos confiáveis, só o TXT fica disponível. Mídia sem fala não gera arquivos vazios.
 
-O áudio preparado deve ter menos de 5 GB conforme o limite da API. Um codec que não possa ser copiado para WebM/Opus ou M4A/AAC é recusado sem enviar vídeo. O cancelamento local impede que uma resposta tardia altere a tela, mas não garante a interrupção de processamento ou cobrança já iniciados no serviço. A mídia e as transcrições não baixadas ficam apenas na janela atual; ao fechá-la, esse estado se perde.
+O áudio preparado deve ter menos de 5 GB conforme o limite da API. Um codec que não possa ser copiado para WebM/Opus ou M4A/AAC é recusado sem enviar vídeo. O cancelamento local impede que uma resposta tardia altere a tela, mas não garante a interrupção de processamento ou cobrança já iniciados no serviço. As transcrições não baixadas ficam apenas na janela atual; ao fechá-la, esse estado se perde. A gravação feita no app é copiada em IndexedDB enquanto grava e só é apagada ao baixar o arquivo ou descartar; se a janela ou o Chrome fechar antes, a tela inicial oferece **Recuperar** ou **Descartar** na próxima abertura (iniciar nova gravação descarta a cópia).
 
 ---
 
@@ -114,6 +114,7 @@ screen-recorder/
 │   ├── recording-profile.js # perfis de qualidade da gravação
 │   ├── deepgram-live.js     # CloseStream e KeepAlive do Deepgram
 │   ├── unload-guard.js      # confirmação ao fechar com gravação não salva
+│   ├── recovery-store.js    # cópia de segurança da gravação em IndexedDB
 │   └── utils/
 │       └── timer.js         # formata mm:ss
 ├── fonts/                   # DM Sans e JetBrains Mono locais (OFL)
@@ -165,7 +166,7 @@ Clique no ícone
 | Arquivo final | Contêiner WebM regravado ao parar, sem recodificar, para ter duração e permitir avançar o vídeo (acima de 1,5 GB mantém o original) |
 | Transcrição ao vivo | Deepgram nova-3 |
 | Transcrição posterior | ElevenLabs Scribe v2; áudio WebM/MP3 ou M4A extraído localmente |
-| Armazenamento | `chrome.storage.local` (chaves separadas Deepgram e ElevenLabs); mídia e resultados só na memória da janela |
+| Armazenamento | `chrome.storage.local` (chaves separadas Deepgram e ElevenLabs); resultados só na memória da janela; cópia de segurança da gravação em IndexedDB (`recorder-recovery`) até baixar ou descartar |
 
 ### Permissões
 

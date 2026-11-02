@@ -26,7 +26,7 @@ Para verificar comportamento no Chrome, rode o build, carregue a raiz deste repo
 - `src/background.js` é um service worker vazio (reservado). Ele continua declarado no manifest porque os testes e2e obtêm o ID da extensão a partir dele. A captura de tela é pedida em `recorder.js`.
 - `src/recorder.js` coordena captura, mixagem de áudio, gravação, transcrição e downloads.
 - `src/audio-processor.js` processa PCM para a transcrição ao vivo.
-- `src/mp3-worker.js` codifica MP3 fora da thread principal; `src/webm-finalize.js` regrava o WebM com duração; `src/recording-profile.js` define os perfis de qualidade; `src/deepgram-live.js` e `src/unload-guard.js` isolam o fechamento do Deepgram e o aviso de saída.
+- `src/mp3-worker.js` codifica MP3 fora da thread principal; `src/webm-finalize.js` regrava o WebM com duração; `src/recording-profile.js` define os perfis de qualidade; `src/deepgram-live.js` e `src/unload-guard.js` isolam o fechamento do Deepgram e o aviso de saída; `src/recovery-store.js` guarda a gravação em IndexedDB para recuperação.
 - `recorder.html` e `popup.html` definem as interfaces da extensão.
 - `manifest.json` declara permissões, páginas e service worker.
 

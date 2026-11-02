@@ -124,6 +124,38 @@ test('worker de MP3 codifica PCM em MP3 e a página não pede fontes externas', 
   });
 });
 
+test('recupera a gravação interrompida salva em IndexedDB e a descarta depois', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ page }) => {
+    await expect(page.locator('#recovery')).toBeHidden();
+    const bytes = (await fs.readFile(path.join(root, 'src', 'fixtures', 'video-audio.webm'))).toString('base64');
+    await page.evaluate(async b64 => {
+      const blob = new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'video/webm' });
+      const db = await new Promise((resolve, reject) => {
+        const open = indexedDB.open('recorder-recovery', 1);
+        open.onsuccess = () => resolve(open.result);
+        open.onerror = () => reject(open.error);
+      });
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(['meta', 'chunks'], 'readwrite');
+        tx.objectStore('meta').put({ mode: 'video', type: 'video/webm', startedAt: Date.now() }, 'current');
+        tx.objectStore('chunks').add(blob);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    }, bytes);
+    await page.reload();
+    await expect(page.locator('#recovery')).toBeVisible();
+    await page.locator('#recovery-restore').click();
+    await expect(page.locator('#done-title')).toHaveText('Gravação recuperada');
+    await expect(page.locator('#btn-dl')).toBeEnabled();
+    await expect(page.locator('#post-start')).toBeEnabled();
+    await page.locator('#btn-discard').click();
+    await page.reload();
+    await expect(page.locator('#recovery')).toBeHidden();
+  });
+});
+
 test('importa WebM, envia só áudio após clique e gera TXT/SRT', async ({}, testInfo) => {
   await withExtension(testInfo, async ({ context, page, events }) => {
     let requests = 0;
