@@ -63,7 +63,7 @@ test('modo só áudio encerra ao parar o compartilhamento pelo Chrome', async ({
     await exposeCapture(context);
     await page.reload();
     await startRecording(page, 'audio');
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1600);
     await page.evaluate(() => window.__capture.getVideoTracks()[0].dispatchEvent(new Event('ended')));
     await expect(page.locator('#v-done')).toHaveClass(/on/);
     await expect(page.locator('#done-sub')).toHaveText('Arquivo .webm pronto');
@@ -78,7 +78,7 @@ test('fechar a janela gravando pede confirmação e baixar o arquivo libera a sa
     const dialogs = [];
     page.on('dialog', dialog => { dialogs.push(dialog.type()); dialog.dismiss(); });
     await startRecording(page);
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1600);
     await page.close({ runBeforeUnload: true });
     await expect.poll(() => dialogs.length).toBe(1);
     expect(dialogs).toEqual(['beforeunload']);
@@ -156,6 +156,8 @@ test('Deepgram: CloseStream entrega o trecho final e a pausa suspende o áudio',
     await page.locator('#toggle-transcript').check();
     await startRecording(page);
     await expect.poll(() => seen.binary, { timeout: 8000 }).toBeGreaterThan(3);
+    // O MediaRecorder só emite dados após ~1 s; gravar menos que isso resulta em arquivo vazio.
+    await page.waitForTimeout(1800);
     await page.locator('#btn-pause').click();
     await page.waitForTimeout(500);
     const paused = seen.binary;
@@ -164,6 +166,7 @@ test('Deepgram: CloseStream entrega o trecho final e a pausa suspende o áudio',
     expect(seen.keepAlive).toBeGreaterThan(0);
     await page.locator('#btn-pause').click();
     await expect.poll(() => seen.binary, { timeout: 5000 }).toBeGreaterThan(paused);
+    await page.waitForTimeout(1200);
     await page.locator('#btn-stop').click();
     await expect(page.locator('#done-sub')).toHaveText('Arquivo .webm pronto');
     await expect(page.locator('#transcript-preview')).toHaveText(/frase final do servidor/);
