@@ -1,0 +1,213 @@
+---
+description: "Tasks da feature 002-escolha-provedor-transcricao"
+---
+
+# Tasks: Escolha do provedor da transcrição pós-gravação
+
+**Input**: `sdd/specs/002-escolha-provedor-transcricao/` (`spec.md`, `plan.md`, `research.md`, `logic/provider-adapter.md`)
+
+**Prerequisites**: `plan.md`, `spec.md`, `contract-tests.lock` (5 contratos travados).
+
+**Organization**: a reorganização dos testes (US4, P2) vem primeiro como fundação, para os testes novos nascerem em `tests/` e não serem movidos duas vezes; depois US1 (P1), US2 (P2) e US3 (P3).
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: pode rodar em paralelo (arquivos diferentes, sem dependência)
+- **[Story]**: US1 a US4, ou `[Shared]`
+
+## Path Conventions
+
+- Lógica de provedores em `src/post-transcription-providers/`; cliente e sessão em `src/post-transcription-client.js` e `src/post-transcription-session.js`.
+- Interface em `recorder.html` e `src/recorder.js`; `manifest.json` não muda.
+- Depois da Fase 2: testes unitários e de contrato em `tests/unit/` (espelhando `src/`), e2e em `tests/e2e/`, teste real em `tests/integration/`, mídias de teste em `tests/fixtures/`.
+
+## Phase 1: Setup
+
+**Purpose**: registrar o ponto de partida antes de mover qualquer arquivo.
+
+- [ ] T001 [Shared] Rodar e anotar no Registro da Fase: `npm test` (esperado: 76 verdes e 5 vermelhos do contrato novo), `npm run build`, `npm run test:e2e` (esperado: 31 verdes), `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` e `-Slug 002-escolha-provedor-transcricao` (ambos íntegros). Estas contagens são a referência de SC-006.
+
+**Registro da Fase**:
+
+- Status:
+- Feito:
+- Contrato:
+- Testes executados:
+- Pendências:
+
+---
+
+## Phase 2: Foundational — Testes organizados em tests/ (US4, Priority: P2)
+
+**Purpose**: mover todos os testes e fixtures para `tests/` sem alterar casos (FR-014 a FR-017, SC-006, SC-007).
+
+**⚠️ CRITICAL**: bloqueia as fases seguintes. Só mudam linhas de caminho; nenhum caso é criado, removido ou reescrito. A única edição permitida em arquivo de contrato é a emenda R-001 (linhas de `import`).
+
+- [ ] T002 [US4] Criar `tests/unit`, `tests/e2e`, `tests/integration`, `tests/fixtures` e mover `src/fixtures/*` para `tests/fixtures/` com `git mv`.
+- [ ] T003 [P] [US4] Mover com `git mv` os testes unitários de `src/` para `tests/unit/` (mesmo nome; `src/utils/*.test.js` para `tests/unit/utils/`): `deepgram-live`, `mp3-encode`, `post-transcription-audio`, `post-transcription-client`, `post-transcription-session`, `recording-profile`, `recovery-store`, `subtitles`, `unload-guard`, `webm-finalize`, `utils/download`, `utils/timer`. Ajustar os `import` para `../../src/...` e a leitura de fixtures (`__dirname` → `../fixtures`). Não tocar no contrato da 001 aqui.
+- [ ] T004 [US4] Emenda R-001: `git mv src/post-transcription.contract.test.js tests/unit/post-transcription.contract.test.js`, trocar **somente** as linhas de `import` (para `../../src/...`), conferir por `git diff` que nada mais mudou, rodar `npx jest tests/unit/post-transcription.contract.test.js` (5 verdes) e regravar a trava: `.\.planning\scripts\powershell\check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao -Write -Paths tests/unit/post-transcription.contract.test.js`, depois conferir `PASS` sem `-Write`.
+- [ ] T005 [US4] Mover `e2e/*` para `tests/e2e/` (`git mv`): ajustar `root` em `helpers.cjs` (`path.resolve(__dirname, '..', '..')`), caminhos de fixtures nos specs (`tests/fixtures`), `testDir` em `playwright.config.cjs` e o `root` de `run.mjs` (dois níveis acima).
+- [ ] T006 [P] [US4] Mover `integration/elevenlabs-live.test.mjs` para `tests/integration/` e ajustar imports relativos e caminho de fixtures, se houver.
+- [ ] T007 [US4] Atualizar `package.json`: scripts `test:e2e*` e `test:elevenlabs:*` para os novos caminhos, `jest` com `roots`/`testMatch` apontando só para `tests/unit` e `testPathIgnorePatterns` coerente (e2e e integration continuam fora do `npm test`).
+- [ ] T008 [US4] Atualizar `README.md` (árvore do projeto e comandos de teste), `CLAUDE.md` (menções a `e2e/`, `src/*.test.js`) e `.gitignore` se necessário.
+
+### Testes da Fase
+
+- [ ] T009 [US4] Verificar e registrar: `npm test` com os mesmos 76 casos verdes (+5 contratos novos ainda vermelhos), `npm run build` sem erro, `npm run test:e2e` com os mesmos 31 verdes, `check-contract-tests.ps1` íntegro para 001 (novo caminho) e 002, e busca sem nenhum `*.test.*`/`*.spec.*`/fixture fora de `tests/`: `git ls-files | grep -E "\.(test|spec)\.|fixtures/" | grep -v "^tests/"` (vazio).
+
+**Critério de Conclusão**: `npm test` → 76 verdes e 5 vermelhos esperados (os contratos 002); `npm run test:e2e` → 31/31; `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` e `-Slug 002-escolha-provedor-transcricao` → íntegros; nenhum arquivo de teste ou fixture fora de `tests/`; `dist/` sem testes. O `git diff -M` do contrato da 001 mostra só `import`.
+
+**Checkpoint**: estrutura nova estável; nenhuma regressão.
+
+**Registro da Fase**:
+
+- Status:
+- Feito:
+- Contrato:
+- Testes executados:
+- Pendências:
+
+---
+
+## Phase 3: User Story 1 - Transcrever com o provedor escolhido (Priority: P1) 🎯 MVP
+
+**Objetivo**: escolher ElevenLabs ou Deepgram na tela final e transcrever com o escolhido, com aviso, chave e erros corretos.
+
+**Independent Test**: com resposta simulada, escolher Deepgram, transcrever e baixar TXT/SRT; repetir com ElevenLabs; sem chave do provedor, ver a orientação sem envio.
+
+### Contrato da Fase
+
+- `Deepgram recebe só o áudio com a chave dele...` — US1/AC1, FR-006
+- `Cada provedor só fala com o próprio serviço` — US1/AC4, FR-002, Constitution II
+- `O limite de tamanho depende do provedor...` — FR-011
+- `Erro do Deepgram é classificado e não vaza a chave` — FR-009, FR-013
+- Comando: `npx jest tests/unit/post-provider-choice.contract.test.js` (os 4 acima verdes; o da sessão fica para a Fase 4)
+
+### Implementation
+
+- [ ] T010 [P] [US1] Criar `src/post-transcription-providers/timed-words.js` com `summarizeTiming(words)` (`{ segments, timingInfo }` a partir de `{ start, end, text }`), extraído da lógica atual de `elevenlabs.js`; fazer `elevenlabs.js` usá-lo sem mudar seu comportamento (testes existentes seguem verdes). Ver `logic/provider-adapter.md`.
+- [ ] T011 [US1] Implementar `transcribeWithDeepgram` em `src/post-transcription-providers/deepgram.js` (substitui o stub): URL com `model=nova-3`, `language`, `punctuate`, `smart_format`; `Authorization: Token`; corpo `audio.blob`; timeout/abort; resposta `results.channels[0].alternatives[0]`; erros conforme `research.md` §5 incluindo `PAYMENT_REQUIRED` → contrato: `Deepgram recebe só o áudio...`, `Erro do Deepgram é classificado...`
+- [ ] T012 [US1] Criar `src/post-transcription-providers/index.js` com `PROVIDERS`, `DEFAULT_PROVIDER` e `isProvider` (ver `logic/provider-adapter.md`), com `maxBytes` por provedor.
+- [ ] T013 [US1] Em `src/post-transcription-client.js`, aceitar `provider` (padrão `DEFAULT_PROVIDER`), validar (`INVALID_PROVIDER`), checar o limite do provedor antes do envio e despachar para o adaptador do registro, repassando `fetchImpl`; remover a constante `MAX_AUDIO_BYTES` local → contrato: `Cada provedor só fala com o próprio serviço`, `O limite de tamanho depende do provedor...`
+- [ ] T014 [US1] Em `recorder.html`, adicionar `#post-provider` (ElevenLabs/Deepgram) ao painel `#post-panel`, junto do idioma, e `#post-notice` no lugar do texto fixo "somente o áudio será enviado à ElevenLabs"; ajustar as mensagens de importação (`label[for=import-file]`) que citam ElevenLabs.
+- [ ] T015 [US1] Em `src/recorder.js`: `getProviderKey(provider)` (usa `PROVIDERS[...].keyStorage`), aviso e dicas montados com o rótulo do provedor escolhido, `postMessages` como função do rótulo (incluindo `PAYMENT_REQUIRED` e o limite do provedor em `AUDIO_TOO_LARGE`), `post-start` enviando `provider` ao `postSession.start`, e `renderPostState` desabilitando `#post-provider` em `processing`. A mensagem de chave ausente cita o provedor escolhido e ⚙ Configurações, sem oferecer o outro. Buscar por "ElevenLabs" restante em `recorder.js` e `recorder.html` (R-003).
+- [ ] T016 [US1] Em `recorder.js`, ajustar `resetPostSession()` para o `transcribe` da sessão chamar `transcribePreRecorded` com `provider` e a chave do provedor recebido (DI-004, R-006).
+
+### Testes da Fase
+
+- [ ] T017 [P] [US1] `tests/unit/post-transcription-providers/deepgram.test.js`: resposta normal, `punctuated_word` ausente, tempos ausentes/inválidos (`timingInfo`), resposta sem `results`, 400/401/402/413/429/408/504/5xx, falha de rede, timeout, cancelamento, e que a chave nunca aparece no erro.
+- [ ] T018 [P] [US1] `tests/unit/post-transcription-providers/index.test.js`: `isProvider` rejeita `toString`/`__proto__`; limites e rótulos; `timed-words.test.js` com os mesmos casos de contagem da ElevenLabs.
+- [ ] T019 [US1] `tests/e2e/providers.spec.cjs` (Chromium, rede simulada): escolher Deepgram e conferir `POST` a `api.deepgram.com/v1/listen` com `Authorization: Token`, corpo só de áudio e nenhuma requisição à ElevenLabs; escolher ElevenLabs e conferir o inverso; aviso de envio troca de serviço com o seletor; chave ausente por provedor mostra a orientação e não envia; seletor desabilitado durante o processamento; erro 401 do Deepgram cita Deepgram.
+
+**Critério de Conclusão**: `npx jest tests/unit/post-provider-choice.contract.test.js` → 4/5 verdes (o da sessão, Fase 4, ainda vermelho) e `check-contract-tests.ps1 -Slug 002-escolha-provedor-transcricao` íntegro; testes da fase verdes; `npm run build` sem erro; nenhuma menção fixa a "ElevenLabs" onde o provedor é variável.
+
+**Checkpoint**: US1 funcional com resposta simulada.
+
+**Registro da Fase**:
+
+- Status:
+- Feito:
+- Contrato:
+- Testes executados:
+- Pendências:
+
+---
+
+## Phase 4: User Story 2 - Retranscrever com outro provedor (Priority: P2)
+
+**Objetivo**: registrar o provedor no resultado, mostrar quem gerou o texto e preservar o anterior em retranscrições.
+
+**Independent Test**: transcrever com um provedor, trocar o seletor, transcrever de novo e conferir texto anterior preservado e rótulo do provedor.
+
+### Contrato da Fase
+
+- `Sessão repassa o provedor, o resultado o registra e uma falha preserva o anterior` — US2/AC1-3, FR-007, FR-008
+- Comando: `npx jest tests/unit/post-provider-choice.contract.test.js` → 5/5 verdes
+
+### Implementation
+
+- [ ] T020 [US2] Em `src/post-transcription-session.js`: `start({ provider })` (padrão `elevenlabs`), `INVALID_PROVIDER` antes de publicar `processing`, repasse de `provider` a `transcribe` e `transcript.provider` no sucesso; `setExistingTranscript` marca `provider: 'deepgram'`, `origin: 'live'` → contrato: `Sessão repassa o provedor...`
+- [ ] T021 [US2] Em `recorder.html`/`recorder.js`: mostrar "Transcrito por {rótulo} ({idioma})" no bloco do resultado (e "Transcrição ao vivo (Deepgram)" para `origin: 'live'`), sem alterar nomes nem conteúdo dos arquivos TXT/SRT.
+
+### Testes da Fase
+
+- [ ] T022 [P] [US2] Acrescentar em `tests/unit/post-transcription-session.test.js`: provedor padrão sem `provider`, cancelamento durante nova tentativa de outro provedor preserva o resultado e o `provider` anteriores, resposta tardia de provedor cancelado é ignorada.
+- [ ] T023 [US2] Em `tests/e2e/providers.spec.cjs`: transcrever com ElevenLabs, trocar para Deepgram e transcrever de novo (texto anterior visível durante o processamento, substituído só ao concluir; rótulo muda), cancelamento e falha mantêm o anterior, erro do provedor escolhido não sugere o outro.
+
+**Critério de Conclusão**: `npx jest tests/unit/post-provider-choice.contract.test.js` → 5/5 verdes e `check-contract-tests.ps1 -Slug 002-escolha-provedor-transcricao` íntegro; `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` íntegro; testes da fase verdes.
+
+**Checkpoint**: US2 funcional; contratos todos verdes.
+
+**Registro da Fase**:
+
+- Status:
+- Feito:
+- Contrato:
+- Testes executados:
+- Pendências:
+
+---
+
+## Phase 5: User Story 3 - Lembrar a última escolha (Priority: P3)
+
+**Objetivo**: o seletor começa no último provedor usado.
+
+**Independent Test**: escolher Deepgram, recarregar a página e conferir o seletor; sem escolha prévia, ElevenLabs.
+
+### Implementation
+
+- [ ] T024 [US3] Em `src/recorder.js`: ler `postProvider` de `chrome.storage.local` na inicialização (valor desconhecido → `DEFAULT_PROVIDER`), gravar a cada mudança do seletor e atualizar aviso e estado dos botões ao carregar.
+
+### Testes da Fase
+
+- [ ] T025 [US3] Em `tests/e2e/providers.spec.cjs`: primeira abertura mostra ElevenLabs; escolher Deepgram, recarregar e conferir; valor inválido em storage cai em ElevenLabs.
+
+**Critério de Conclusão**: testes da fase verdes; contratos continuam 5/5 e as duas travas íntegras.
+
+**Checkpoint**: US3 funcional.
+
+**Registro da Fase**:
+
+- Status:
+- Feito:
+- Contrato:
+- Testes executados:
+- Pendências:
+
+---
+
+## Phase 6: Polish & Cross-Cutting Concerns
+
+- [ ] T026 [Shared] `tests/e2e/capture.spec.cjs`: gravar com captura simulada, escolher Deepgram (rede simulada) e transcrever a gravação remuxada; conferir corpo só de áudio.
+- [ ] T027 [Shared] Atualizar `README.md` (escolha de provedor, estrutura `tests/`, comandos) e `CLAUDE.md`; anotar no `## Status` da `sdd/adr/ADR-001-...` que a feature 002 concretizou a seleção (ou propor `sdd-adr`); linha em `.planning/backlog.md`.
+- [ ] T028 [Shared] Executar `quickstart.md`: o que depender de chave real, Chrome real ou seletor nativo fica registrado como pendente em `qa-evidence.md` (criar se precisar), sem chamar de validado.
+- [ ] T029 [Shared] Busca final por "ElevenLabs"/"Deepgram" fixos em mensagens da interface e por chaves em logs, testes e relatórios.
+
+### Checklist de Release
+
+- [ ] Fase 2 (US4, reorganização) concluída; contagens iguais às da T001
+- [ ] Fase 3 (US1) concluída
+- [ ] Fase 4 (US2) concluída
+- [ ] Fase 5 (US3) concluída
+- [ ] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 002 e 001
+- [ ] `npm test` e `npm run test:e2e` executados e registrados
+- [ ] `npm run build` sem erro, sem editar `dist/`
+- [ ] Extensão recarregada no Chrome e fluxo verificado, ou pendência declarada
+- [ ] Deepgram real, limite real e seletor nativo de captura verificados separadamente, ou pendências declaradas
+- [ ] `quickstart.md` executado
+
+---
+
+## Dependencies & Execution Order
+
+- **Setup (Fase 1)** → **Foundational (Fase 2)**, que bloqueia as demais → **US1 (Fase 3)** → **US2 (Fase 4)** (depende de `provider` já existir no cliente) → **US3 (Fase 5)** → **Polish**.
+- Dentro da Fase 3: T010 e T012 em paralelo; T011 depende de T010; T013 depende de T011 e T012; T014 a T016 dependem de T013.
+- US3 poderia rodar em paralelo com US2 depois de T015, mas ambas editam `recorder.js`; seguir em ordem.
+
+## Implementation Strategy
+
+1. Baseline (Fase 1), reorganização (Fase 2) e conferência de contagens.
+2. US1 até os 4 contratos verdes; validar com resposta simulada (MVP).
+3. US2 (contrato da sessão), US3 (preferência), Polish e validação real quando houver chave e Chrome.
+
+<!-- sdd-converge anexa "## Phase N: Convergence" abaixo desta linha -->

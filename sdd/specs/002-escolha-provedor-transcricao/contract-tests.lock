@@ -1,0 +1,12 @@
+{
+  "feature": "002-escolha-provedor-transcricao",
+  "lockedAt": "2026-11-02 16:50",
+  "total": 5,
+  "files": [
+    {
+      "path": "tests/unit/post-provider-choice.contract.test.js",
+      "sha256": "41abac653116334e84b51828493732d3c25efd58bb6beca07aa86fb77f023b7a",
+      "tests": 5
+    }
+  ]
+}
