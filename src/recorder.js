@@ -1,6 +1,7 @@
 import { fmt } from './utils/timer.js';
 import { createPostTranscriptionSession } from './post-transcription-session.js';
 import { transcribePreRecorded } from './post-transcription-client.js';
+import { DEFAULT_PROVIDER, PROVIDERS, isProvider } from './post-transcription-providers/index.js';
 import { closeDeepgramSocket, startKeepAlive } from './deepgram-live.js';
 import { downloadBlob, timestamp } from './utils/download.js';
 import { floatToInt16 } from './mp3-encode.js';
@@ -59,37 +60,64 @@ const timer = $('timer'), st = $('st'), wave = $('wave');
 const doneLabel = $('done-label'), doneDur = $('done-dur'), doneSub = $('done-sub');
 const errEl = $('err'), warnEl = $('warn'), logEl = $('log');
 
-const postMessages = {
-  KEY_REQUIRED: 'Informe e salve a chave ElevenLabs em ⚙ Configurações para transcrever.',
-  AUTH_FAILED: 'Chave ElevenLabs recusada. Confira a chave e tente novamente.',
-  ACTIVITY_RESTRICTED: 'A ElevenLabs bloqueou a transcrição por atividade incomum nesta conta ou rede. Verifique a conta ou procure o suporte da ElevenLabs.',
-  AUDIO_TOO_LARGE: 'O áudio preparado excede o limite de 5 GB da ElevenLabs.',
-  INVALID_MEDIA: 'Arquivo inválido ou corrompido.',
-  REQUEST_REJECTED: 'A ElevenLabs rejeitou a solicitação',
-  UNSUPPORTED_MEDIA: 'Formato ou tipo de arquivo não aceito.',
-  NO_AUDIO: 'Este vídeo não contém uma faixa de áudio utilizável.',
-  UNSUPPORTED_CODEC: 'A faixa de áudio não pode ser copiada sem conversão.',
-  NETWORK_ERROR: 'Sem conexão com a ElevenLabs. Tente novamente.',
-  RATE_LIMITED: 'Limite temporário da ElevenLabs. Tente novamente mais tarde.',
-  TIMEOUT: 'A ElevenLabs demorou demais para responder. Tente novamente.',
-  SERVICE_UNAVAILABLE: 'ElevenLabs indisponível. Tente novamente.',
-  INCOMPLETE_RESULT: 'A resposta não trouxe tempos válidos para as legendas.',
-  TRANSCRIPTION_FAILED: 'Não foi possível concluir a transcrição.'
-};
+// Mensagens da transcrição posterior: sempre citam o serviço que a executou ou vai executá-la.
+function postMessages(provider) {
+  const { label, maxBytes } = PROVIDERS[isProvider(provider) ? provider : DEFAULT_PROVIDER];
+  return {
+    KEY_REQUIRED: `Informe e salve a chave ${label} em ⚙ Configurações para transcrever.`,
+    AUTH_FAILED: `Chave ${label} recusada. Confira a chave e tente novamente.`,
+    PAYMENT_REQUIRED: `Créditos insuficientes na conta ${label}. Verifique o saldo ou o plano.`,
+    ACTIVITY_RESTRICTED: `${label} bloqueou a transcrição por atividade incomum nesta conta ou rede. Verifique a conta ou procure o suporte de ${label}.`,
+    AUDIO_TOO_LARGE: `O áudio preparado excede o limite de ${maxBytes / 1e9} GB de ${label}.`,
+    INVALID_MEDIA: 'Arquivo inválido ou corrompido.',
+    REQUEST_REJECTED: `${label} rejeitou a solicitação`,
+    UNSUPPORTED_MEDIA: 'Formato ou tipo de arquivo não aceito.',
+    NO_AUDIO: 'Este vídeo não contém uma faixa de áudio utilizável.',
+    UNSUPPORTED_CODEC: 'A faixa de áudio não pode ser copiada sem conversão.',
+    NETWORK_ERROR: `Sem conexão com ${label}. Tente novamente.`,
+    RATE_LIMITED: `Limite temporário de ${label}. Tente novamente mais tarde.`,
+    TIMEOUT: `${label} demorou demais para responder. Tente novamente.`,
+    SERVICE_UNAVAILABLE: `${label} indisponível. Tente novamente.`,
+    INVALID_RESPONSE: `Resposta inesperada de ${label}. Tente novamente.`,
+    INCOMPLETE_RESULT: 'A resposta não trouxe tempos válidos para as legendas.',
+    TRANSCRIPTION_FAILED: 'Não foi possível concluir a transcrição.'
+  };
+}
+
+function selectedProvider() {
+  const value = $('post-provider').value;
+  return isProvider(value) ? value : DEFAULT_PROVIDER;
+}
+
+function getProviderKey(provider) {
+  const storageKey = PROVIDERS[provider].keyStorage;
+  return new Promise(resolve => chrome.storage.local.get(storageKey,
+    result => resolve(result[storageKey] || '')));
+}
 
 function getElevenLabsKey() {
-  return new Promise(resolve => chrome.storage.local.get('elevenLabsKey',
-    result => resolve(result.elevenLabsKey || '')));
+  return getProviderKey('elevenlabs');
+}
+
+// Aviso de envio e dica de chave seguem o serviço escolhido (Constitution II).
+function renderProviderNotice() {
+  const { label } = PROVIDERS[selectedProvider()];
+  $('post-notice').textContent = `Para vídeos, a faixa de áudio será separada neste computador. Após clicar em Transcrever, somente o áudio será enviado a ${label}.`;
+  $('post-key-hint').textContent = `A chave ${label} é configurada em ⚙ Configurações.`;
 }
 
 function renderPostState(state) {
   const processing = state.status === 'processing';
+  const active = isProvider(state.provider) ? state.provider : selectedProvider();
+  const messages = postMessages(active);
+  const { label } = PROVIDERS[active];
+  $('post-provider').disabled = processing;
   $('post-start').disabled = processing || !state.source;
   $('post-start').textContent = state.status === 'error' || state.status === 'cancelled' ||
     state.status === 'no-speech' ? 'Tentar novamente' : 'Transcrever áudio';
   $('post-cancel').classList.toggle('hidden', !processing);
-  const stages = { preparing: 'Preparando áudio localmente', sending: 'Enviando somente áudio à ElevenLabs',
-    waiting: 'Envio em andamento; aguardando resposta da ElevenLabs' };
+  const stages = { preparing: 'Preparando áudio localmente', sending: `Enviando somente áudio a ${label}`,
+    waiting: `Envio em andamento; aguardando resposta de ${label}` };
   const counts = state.transcript?.timingInfo;
   const timingSummary = counts
     ? ` ${counts.words} ${counts.words === 1 ? 'palavra' : 'palavras'}; ${counts.valid} ${counts.valid === 1 ? 'tempo válido' : 'tempos válidos'}${counts.missing ? `; ${counts.missing} ${counts.missing === 1 ? 'ausente' : 'ausentes'}` : ''}${counts.invalid ? `; ${counts.invalid} ${counts.invalid === 1 ? 'inválido' : 'inválidos'}` : ''}.`
@@ -103,8 +131,8 @@ function renderPostState(state) {
     cancelled: 'Transcrição cancelada. A mídia e o texto anterior permanecem disponíveis.',
     'no-speech': 'Nenhuma fala reconhecível. Nenhum TXT ou SRT vazio será gerado.',
     error: state.error === 'REQUEST_REJECTED'
-      ? `${postMessages.REQUEST_REJECTED} (HTTP ${state.errorInfo?.httpStatus || '?'}${state.errorInfo?.field ? `; campo ${state.errorInfo.field}` : ''}).`
-      : postMessages[state.error] || postMessages.TRANSCRIPTION_FAILED
+      ? `${messages.REQUEST_REJECTED} (HTTP ${state.errorInfo?.httpStatus || '?'}${state.errorInfo?.field ? `; campo ${state.errorInfo.field}` : ''}).`
+      : messages[state.error] || messages.TRANSCRIPTION_FAILED
   };
   $('post-status').textContent = processing
     ? `${stages[state.stage] || 'Processando'}${state.stage === 'preparing' && Number.isFinite(state.progress) ? ` (${Math.round(state.progress * 100)}%)` : ''}.`
@@ -123,8 +151,8 @@ function renderPostState(state) {
 function resetPostSession() {
   postSession?.cancel();
   postSession = createPostTranscriptionSession({
-    transcribe: async ({ media, language, signal, onStage }) =>
-      transcribePreRecorded({ media, language, signal, onStage, key: await getElevenLabsKey() })
+    transcribe: async ({ media, language, provider, signal, onStage }) =>
+      transcribePreRecorded({ media, language, provider, signal, onStage, key: await getProviderKey(provider) })
   });
   postSession.subscribe(renderPostState);
 }
@@ -695,13 +723,16 @@ document.getElementById('btn-dl-srt').addEventListener('click', () => {
 
 $('post-start').addEventListener('click', async () => {
   try {
-    await postSession.start({ language: $('post-lang').value, confirmedExternalSend: true });
+    await postSession.start({ language: $('post-lang').value, provider: selectedProvider(),
+      confirmedExternalSend: true });
   } catch (error) {
-    $('post-status').textContent = postMessages[error.code] || 'A gravação ainda não está pronta.';
+    $('post-status').textContent = postMessages(selectedProvider())[error.code] || 'A gravação ainda não está pronta.';
   }
 });
 
 $('post-cancel').addEventListener('click', () => postSession.cancel());
+$('post-provider').addEventListener('change', renderProviderNotice);
+renderProviderNotice();
 
 $('post-save-key').addEventListener('click', () => {
   const key = $('post-key').value.trim();

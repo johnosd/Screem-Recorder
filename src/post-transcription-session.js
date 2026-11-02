@@ -1,4 +1,5 @@
 import { recoverTimedSegments, validSrt } from './subtitles.js';
+import { DEFAULT_PROVIDER, isProvider } from './post-transcription-providers/index.js';
 
 function failure(code) {
   const error = new Error(code);
@@ -9,7 +10,7 @@ function failure(code) {
 export function createPostTranscriptionSession({ transcribe }) {
   if (typeof transcribe !== 'function') throw failure('TRANSCRIBER_REQUIRED');
   let snapshot = { status: 'idle', source: null, transcript: null, stage: null, progress: null,
-    error: null, errorInfo: null };
+    error: null, errorInfo: null, provider: null };
   let active = null;
   let generation = 0;
   const listeners = new Set();
@@ -32,20 +33,21 @@ export function createPostTranscriptionSession({ transcribe }) {
       if (active) throw failure('ALREADY_RUNNING');
       if (!snapshot.source) throw failure('MEDIA_NOT_READY');
       if (!transcript || typeof transcript.text !== 'string' || !transcript.text.trim()) return;
-      publish({ transcript: { ...transcript, text: transcript.text.trim(), origin: 'live' } });
+      publish({ transcript: { ...transcript, text: transcript.text.trim(), origin: 'live', provider: 'deepgram' } });
     },
-    async start({ language, confirmedExternalSend } = {}) {
+    async start({ language, provider = DEFAULT_PROVIDER, confirmedExternalSend } = {}) {
       if (active) throw failure('ALREADY_RUNNING');
       if (!snapshot.source?.ready) throw failure('MEDIA_NOT_READY');
       if (!['pt-BR', 'en'].includes(language)) throw failure('INVALID_LANGUAGE');
+      if (!isProvider(provider)) throw failure('INVALID_PROVIDER');
       if (confirmedExternalSend !== true) throw failure('CONSENT_REQUIRED');
       const controller = new AbortController();
       const id = ++generation;
       active = { id, controller };
       publish({ status: 'processing', stage: 'preparing', progress: null, error: null,
-        errorInfo: null });
+        errorInfo: null, provider });
       try {
-        const result = await transcribe({ media: snapshot.source.blob, language,
+        const result = await transcribe({ media: snapshot.source.blob, language, provider,
           signal: controller.signal,
           onStage(stage, progress = null) {
             if (active?.id === id) publish({ stage, progress });
@@ -57,7 +59,7 @@ export function createPostTranscriptionSession({ transcribe }) {
           const segments = recoverTimedSegments(result.segments);
           publish({ status: 'completed', stage: null, progress: null, error: null, errorInfo: null,
             transcript: { text: result.text.trim(), segments, timingInfo: result.timingInfo || null,
-              srt: validSrt(result.srt) ? result.srt : null, language, origin: 'post' } });
+              srt: validSrt(result.srt) ? result.srt : null, language, origin: 'post', provider } });
         }
         return { ...snapshot };
       } catch (error) {

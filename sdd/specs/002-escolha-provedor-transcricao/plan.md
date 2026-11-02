@@ -140,10 +140,10 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 
 | Área | Estado |
 | --- | --- |
-| Fase 1 (baseline) | Concluída. |
-| Fase 2 (US4, `tests/`) | Concluída: testes e fixtures em `tests/`; travas 001 (novo caminho) e 002 íntegras. |
-| Fase 3 (US1) | Não iniciada; 4 contratos vermelhos esperados. |
-| Fases 4, 5 e Polish | Não iniciadas. |
+| Fase 1 e 2 | Concluídas. |
+| Fase 3 (US1) | Concluída: adaptador Deepgram, registro, cliente, seletor, avisos e erros por provedor; 4 contratos da US1 verdes. |
+| Fase 4 (US2) | Parcial: T020 (sessão) feita; falta T021 (rótulo no resultado), T022 e T023. |
+| Fase 5 e Polish | Não iniciadas. |
 
 ## Riscos e Decisões
 
@@ -163,15 +163,16 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 | Data | Fase/Story | Resumo | Pendência Principal |
 | --- | --- | --- | --- |
 | 2026-11-02 | Fase 1 e Fase 2 | Baseline registrado e reorganização dos testes em `tests/` concluída, com emenda R-001/R-011 aplicada (só imports) e trava da 001 regravada. | Nenhuma. |
+| 2026-11-02 | Fase 3 (US1) | Provedor Deepgram, registro, cliente e interface por provedor; 5/5 contratos verdes (sessão adiantada); Jest 102, e2e 41. | Deepgram real e limite real não verificados. |
 
-**PRÓXIMO**: Fase 3 (US1): adaptador Deepgram, registro de provedores, cliente e interface.
+**PRÓXIMO**: Fase 4 (US2): T021 rótulo "Transcrito por", T022/T023 testes.
 
 ## Arquivos Principais
 
-- `tests/unit/post-provider-choice.contract.test.js` (travado)
-- `src/post-transcription-providers/deepgram.js` (stub)
-- `src/post-transcription-client.js`, `src/recorder.js`, `recorder.html`
-- `sdd/specs/002-escolha-provedor-transcricao/logic/provider-adapter.md`
+- `src/post-transcription-providers/{deepgram,index,timed-words}.js`
+- `src/post-transcription-client.js`, `src/post-transcription-session.js`
+- `src/recorder.js`, `recorder.html`
+- `tests/e2e/providers.spec.cjs`, `tests/unit/post-transcription-providers/`
 
 ## Cuidados para Retomada
 
@@ -180,3 +181,4 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 - `Object.defineProperty(media, 'size', ...)` no contrato 4 simula 3 GB sem alocar memória; o `prepareAudio` de áudio devolve `size` do próprio `Blob`.
 - `testMatch` do Jest só inclui `tests/unit/**/*.test.js`; testes novos de unidade devem ir para lá.
 - A raiz do projeto nos helpers e2e e em `run.mjs` é dois níveis acima de `tests/e2e/`.
+- `postMessages(provider)` e o aviso usam o provedor do **estado da sessão** (`state.provider`) quando há; sem estado, o do seletor. Assim o erro cita o serviço que falhou mesmo se o seletor mudar depois.

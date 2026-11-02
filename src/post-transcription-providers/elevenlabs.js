@@ -1,5 +1,6 @@
 import { mediaError } from '../post-transcription-audio.js';
 import { validSrt } from '../subtitles.js';
+import { summarizeTiming } from './timed-words.js';
 
 const ENDPOINT = 'https://api.elevenlabs.io/v1/speech-to-text';
 
@@ -62,14 +63,7 @@ export async function transcribeWithElevenLabs({ audio, language, key, signal, f
   const text = typeof data?.text === 'string' ? data.text.trim() : '';
   const words = Array.isArray(data?.words)
     ? data.words.filter(word => word?.type === 'word' || !word?.type) : [];
-  const segments = words.map(word => ({ start: word.start, end: word.end, text: word.text }));
-  const timingInfo = { words: words.length, valid: 0, missing: 0, invalid: 0 };
-  for (const word of words) {
-    if (!Number.isFinite(word?.start) || !Number.isFinite(word?.end)) timingInfo.missing++;
-    else if (word.start < 0 || word.end <= word.start ||
-      typeof word.text !== 'string' || !word.text.trim()) timingInfo.invalid++;
-    else timingInfo.valid++;
-  }
+  const { segments, timingInfo } = summarizeTiming(words);
   const exported = data?.additional_formats?.find(format =>
     format?.requested_format === 'srt' || format?.file_extension === 'srt');
   let srt = null;

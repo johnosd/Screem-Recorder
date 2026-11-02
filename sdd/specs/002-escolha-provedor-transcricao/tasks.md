@@ -85,19 +85,19 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 ### Implementation
 
-- [ ] T010 [P] [US1] Criar `src/post-transcription-providers/timed-words.js` com `summarizeTiming(words)` (`{ segments, timingInfo }` a partir de `{ start, end, text }`), extraído da lógica atual de `elevenlabs.js`; fazer `elevenlabs.js` usá-lo sem mudar seu comportamento (testes existentes seguem verdes). Ver `logic/provider-adapter.md`.
-- [ ] T011 [US1] Implementar `transcribeWithDeepgram` em `src/post-transcription-providers/deepgram.js` (substitui o stub): URL com `model=nova-3`, `language`, `punctuate`, `smart_format`; `Authorization: Token`; corpo `audio.blob`; timeout/abort; resposta `results.channels[0].alternatives[0]`; erros conforme `research.md` §5 incluindo `PAYMENT_REQUIRED` → contrato: `Deepgram recebe só o áudio...`, `Erro do Deepgram é classificado...`
-- [ ] T012 [US1] Criar `src/post-transcription-providers/index.js` com `PROVIDERS`, `DEFAULT_PROVIDER` e `isProvider` (ver `logic/provider-adapter.md`), com `maxBytes` por provedor.
-- [ ] T013 [US1] Em `src/post-transcription-client.js`, aceitar `provider` (padrão `DEFAULT_PROVIDER`), validar (`INVALID_PROVIDER`), checar o limite do provedor antes do envio e despachar para o adaptador do registro, repassando `fetchImpl`; remover a constante `MAX_AUDIO_BYTES` local → contrato: `Cada provedor só fala com o próprio serviço`, `O limite de tamanho depende do provedor...`
-- [ ] T014 [US1] Em `recorder.html`, adicionar `#post-provider` (ElevenLabs/Deepgram) ao painel `#post-panel`, junto do idioma, e `#post-notice` no lugar do texto fixo "somente o áudio será enviado à ElevenLabs"; ajustar as mensagens de importação (`label[for=import-file]`) que citam ElevenLabs.
-- [ ] T015 [US1] Em `src/recorder.js`: `getProviderKey(provider)` (usa `PROVIDERS[...].keyStorage`), aviso e dicas montados com o rótulo do provedor escolhido, `postMessages` como função do rótulo (incluindo `PAYMENT_REQUIRED` e o limite do provedor em `AUDIO_TOO_LARGE`), `post-start` enviando `provider` ao `postSession.start`, e `renderPostState` desabilitando `#post-provider` em `processing`. A mensagem de chave ausente cita o provedor escolhido e ⚙ Configurações, sem oferecer o outro. Buscar por "ElevenLabs" restante em `recorder.js` e `recorder.html` (R-003).
-- [ ] T016 [US1] Em `recorder.js`, ajustar `resetPostSession()` para o `transcribe` da sessão chamar `transcribePreRecorded` com `provider` e a chave do provedor recebido (DI-004, R-006).
+- [X] T010 [P] [US1] Criar `src/post-transcription-providers/timed-words.js` com `summarizeTiming(words)` (`{ segments, timingInfo }` a partir de `{ start, end, text }`), extraído da lógica atual de `elevenlabs.js`; fazer `elevenlabs.js` usá-lo sem mudar seu comportamento (testes existentes seguem verdes). Ver `logic/provider-adapter.md`.
+- [X] T011 [US1] Implementar `transcribeWithDeepgram` em `src/post-transcription-providers/deepgram.js` (substitui o stub): URL com `model=nova-3`, `language`, `punctuate`, `smart_format`; `Authorization: Token`; corpo `audio.blob`; timeout/abort; resposta `results.channels[0].alternatives[0]`; erros conforme `research.md` §5 incluindo `PAYMENT_REQUIRED` → contrato: `Deepgram recebe só o áudio...`, `Erro do Deepgram é classificado...`
+- [X] T012 [US1] Criar `src/post-transcription-providers/index.js` com `PROVIDERS`, `DEFAULT_PROVIDER` e `isProvider` (ver `logic/provider-adapter.md`), com `maxBytes` por provedor.
+- [X] T013 [US1] Em `src/post-transcription-client.js`, aceitar `provider` (padrão `DEFAULT_PROVIDER`), validar (`INVALID_PROVIDER`), checar o limite do provedor antes do envio e despachar para o adaptador do registro, repassando `fetchImpl`; remover a constante `MAX_AUDIO_BYTES` local → contrato: `Cada provedor só fala com o próprio serviço`, `O limite de tamanho depende do provedor...`
+- [X] T014 [US1] Em `recorder.html`, adicionar `#post-provider` (ElevenLabs/Deepgram) ao painel `#post-panel`, junto do idioma, e `#post-notice` no lugar do texto fixo "somente o áudio será enviado à ElevenLabs"; ajustar as mensagens de importação (`label[for=import-file]`) que citam ElevenLabs.
+- [X] T015 [US1] Em `src/recorder.js`: `getProviderKey(provider)` (usa `PROVIDERS[...].keyStorage`), aviso e dicas montados com o rótulo do provedor escolhido, `postMessages` como função do rótulo (incluindo `PAYMENT_REQUIRED` e o limite do provedor em `AUDIO_TOO_LARGE`), `post-start` enviando `provider` ao `postSession.start`, e `renderPostState` desabilitando `#post-provider` em `processing`. A mensagem de chave ausente cita o provedor escolhido e ⚙ Configurações, sem oferecer o outro. Buscar por "ElevenLabs" restante em `recorder.js` e `recorder.html` (R-003).
+- [X] T016 [US1] Em `recorder.js`, ajustar `resetPostSession()` para o `transcribe` da sessão chamar `transcribePreRecorded` com `provider` e a chave do provedor recebido (DI-004, R-006).
 
 ### Testes da Fase
 
-- [ ] T017 [P] [US1] `tests/unit/post-transcription-providers/deepgram.test.js`: resposta normal, `punctuated_word` ausente, tempos ausentes/inválidos (`timingInfo`), resposta sem `results`, 400/401/402/413/429/408/504/5xx, falha de rede, timeout, cancelamento, e que a chave nunca aparece no erro.
-- [ ] T018 [P] [US1] `tests/unit/post-transcription-providers/index.test.js`: `isProvider` rejeita `toString`/`__proto__`; limites e rótulos; `timed-words.test.js` com os mesmos casos de contagem da ElevenLabs.
-- [ ] T019 [US1] `tests/e2e/providers.spec.cjs` (Chromium, rede simulada): escolher Deepgram e conferir `POST` a `api.deepgram.com/v1/listen` com `Authorization: Token`, corpo só de áudio e nenhuma requisição à ElevenLabs; escolher ElevenLabs e conferir o inverso; aviso de envio troca de serviço com o seletor; chave ausente por provedor mostra a orientação e não envia; seletor desabilitado durante o processamento; erro 401 do Deepgram cita Deepgram.
+- [X] T017 [P] [US1] `tests/unit/post-transcription-providers/deepgram.test.js`: resposta normal, `punctuated_word` ausente, tempos ausentes/inválidos (`timingInfo`), resposta sem `results`, 400/401/402/413/429/408/504/5xx, falha de rede, timeout, cancelamento, e que a chave nunca aparece no erro.
+- [X] T018 [P] [US1] `tests/unit/post-transcription-providers/index.test.js`: `isProvider` rejeita `toString`/`__proto__`; limites e rótulos; `timed-words.test.js` com os mesmos casos de contagem da ElevenLabs.
+- [X] T019 [US1] `tests/e2e/providers.spec.cjs` (Chromium, rede simulada): escolher Deepgram e conferir `POST` a `api.deepgram.com/v1/listen` com `Authorization: Token`, corpo só de áudio e nenhuma requisição à ElevenLabs; escolher ElevenLabs e conferir o inverso; aviso de envio troca de serviço com o seletor; chave ausente por provedor mostra a orientação e não envia; seletor desabilitado durante o processamento; erro 401 do Deepgram cita Deepgram.
 
 **Critério de Conclusão**: `npx jest tests/unit/post-provider-choice.contract.test.js` → 4/5 verdes (o da sessão, Fase 4, ainda vermelho) e `check-contract-tests.ps1 -Slug 002-escolha-provedor-transcricao` íntegro; testes da fase verdes; `npm run build` sem erro; nenhuma menção fixa a "ElevenLabs" onde o provedor é variável.
 
@@ -105,11 +105,11 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T010 `timed-words.js` (usado também por `elevenlabs.js`); T011 `deepgram.js`; T012 `index.js` (registro com rótulo, chave, limite, adaptador); T013 cliente com `provider`, `INVALID_PROVIDER` e limite por provedor; T014 `recorder.html` (`#post-provider`, `#post-notice`, `#post-key-hint`, textos de Configurações e importação); T015/T016 `recorder.js` (`postMessages(provider)`, `getProviderKey`, aviso dinâmico, seletor desabilitado em `processing`, `PAYMENT_REQUIRED` e `INVALID_RESPONSE`); testes T017 a T019. Desvio: a sessão (T020, Fase 4) foi adiantada porque a UI precisa que `start({ provider })` repasse o provedor ao `transcribe` e o grave no resultado.
+- Contrato: `npx jest tests/unit/post-provider-choice.contract.test.js` → 5/5 verdes (4 da US1 + o da sessão, que passou com a T020 adiantada); trava 002 íntegra; trava 001 íntegra.
+- Testes executados: `npm test` → 102/102 (76 anteriores + 5 contratos + 21 novos: deepgram, index, timed-words); `npm run build` ok; `npm run test:e2e` → 41/41 (31 anteriores + 10 em `providers.spec.cjs`); o teste do seletor falhou uma vez por expectativa errada (estado "aguardando resposta") e foi corrigido no teste.
+- Pendências: FR-012 (ao vivo inalterado): coberto pelo e2e de captura com Deepgram ao vivo, que continua verde (A-01). Deepgram real não verificado (R-002).
 
 ---
 
@@ -126,7 +126,7 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 ### Implementation
 
-- [ ] T020 [US2] Em `src/post-transcription-session.js`: `start({ provider })` (padrão `elevenlabs`), `INVALID_PROVIDER` antes de publicar `processing`, repasse de `provider` a `transcribe` e `transcript.provider` no sucesso; `setExistingTranscript` marca `provider: 'deepgram'`, `origin: 'live'` → contrato: `Sessão repassa o provedor...`
+- [X] T020 [US2] Em `src/post-transcription-session.js`: `start({ provider })` (padrão `elevenlabs`), `INVALID_PROVIDER` antes de publicar `processing`, repasse de `provider` a `transcribe` e `transcript.provider` no sucesso; `setExistingTranscript` marca `provider: 'deepgram'`, `origin: 'live'` → contrato: `Sessão repassa o provedor...`
 - [ ] T021 [US2] Em `recorder.html`/`recorder.js`: mostrar "Transcrito por {rótulo} ({idioma})" no bloco do resultado (e "Transcrição ao vivo (Deepgram)" para `origin: 'live'`), sem alterar nomes nem conteúdo dos arquivos TXT/SRT.
 
 ### Testes da Fase

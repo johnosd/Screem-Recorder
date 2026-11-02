@@ -23,7 +23,7 @@ test('sem conexão com a ElevenLabs mostra erro e permite tentar de novo', async
     await page.locator('#import-file').setInputFiles(fixture('video-audio.webm'));
     await saveElevenLabsKey(page);
     await page.locator('#post-start').click();
-    await expect(page.locator('#post-status')).toContainText('Sem conexão com a ElevenLabs');
+    await expect(page.locator('#post-status')).toContainText('Sem conexão com ElevenLabs');
     await expect(page.locator('#post-start')).toHaveText('Tentar novamente');
     await expect(page.locator('#post-start')).toBeEnabled();
     await expect(page.locator('#btn-dl-txt')).toBeDisabled();
@@ -31,7 +31,7 @@ test('sem conexão com a ElevenLabs mostra erro e permite tentar de novo', async
 });
 
 for (const [status, message] of [
-  [429, 'Limite temporário da ElevenLabs'],
+  [429, 'Limite temporário de ElevenLabs'],
   [503, 'ElevenLabs indisponível'],
   [504, 'demorou demais']
 ]) {
