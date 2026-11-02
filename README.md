@@ -67,7 +67,7 @@ Após qualquer alteração no código, rode `npm run build` e clique em **recarr
 4. O Chrome abre o seletor nativo — escolha a tela, janela ou aba
 5. A janela minimiza automaticamente; a gravação corre em background
 6. Para pausar ou parar, clique no ícone da extensão para restaurar a janela
-7. Após parar, espere a mensagem **Arquivo .webm pronto**. O mesmo arquivo final pode ser baixado ou transcrito.
+7. Após parar, espere a mensagem **Arquivo .webm pronto** (aparece "Finalizando arquivo..." enquanto o contêiner é ajustado). Fechar a janela durante a gravação, ou antes de baixar o arquivo, pede confirmação. O mesmo arquivo final pode ser baixado ou transcrito.
 
 ### Transcrição ao vivo (opcional)
 
@@ -109,8 +109,14 @@ screen-recorder/
 │   ├── background.js        # service worker
 │   ├── popup.js             # abre a janela do gravador (ou restaura se já aberta)
 │   ├── audio-processor.js   # AudioWorkletProcessor — coleta PCM para o Deepgram
+│   ├── mp3-worker.js        # codifica MP3 em Worker (lamejs)
+│   ├── webm-finalize.js     # regrava o WebM com duração/seek
+│   ├── recording-profile.js # perfis de qualidade da gravação
+│   ├── deepgram-live.js     # CloseStream e KeepAlive do Deepgram
+│   ├── unload-guard.js      # confirmação ao fechar com gravação não salva
 │   └── utils/
 │       └── timer.js         # formata mm:ss
+├── fonts/                   # DM Sans e JetBrains Mono locais (OFL)
 ├── dist/                    # gerado pelo webpack — não editar
 ├── lib/
 │   └── lame.min.js          # encoder MP3 (roda no browser)
@@ -155,10 +161,9 @@ Clique no ícone
 |------|---------|
 | Manifest | V3 |
 | Formato de vídeo | WebM (VP9 + Opus) |
-| Bitrate vídeo | 5 Mbps |
-| Bitrate áudio | 128 kbps |
-| Resolução máxima | 1920 × 1080 @ 30fps |
-| Transcrição ao vivo | Deepgram nova-2 |
+| Qualidade | Escolhida em ⚙ Configurações: Alta (1080p30, 8 Mbps vídeo, 160 kbps áudio), Equilibrada (padrão: 1080p30, 5 Mbps, 128 kbps) ou Econômica (720p24, 2,5 Mbps, 96 kbps) |
+| Arquivo final | Contêiner WebM regravado ao parar, sem recodificar, para ter duração e permitir avançar o vídeo (acima de 1,5 GB mantém o original) |
+| Transcrição ao vivo | Deepgram nova-3 |
 | Transcrição posterior | ElevenLabs Scribe v2; áudio WebM/MP3 ou M4A extraído localmente |
 | Armazenamento | `chrome.storage.local` (chaves separadas Deepgram e ElevenLabs); mídia e resultados só na memória da janela |
 
@@ -167,7 +172,6 @@ Clique no ícone
 | Permissão | Uso |
 |-----------|-----|
 | `tabs` | detectar se a janela do gravador já está aberta |
-| `activeTab` | contexto da aba ativa |
 | `windows` | abrir como popup e controlar minimizar/restaurar |
 | `storage` | salvar as chaves Deepgram e ElevenLabs localmente |
 | Hosts Deepgram e ElevenLabs | áudio ao vivo e áudio posterior, respectivamente |

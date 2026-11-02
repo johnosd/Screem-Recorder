@@ -4,7 +4,3 @@ dist/
 .playwright-browsers/
 playwright-report/
 test-results/
-
-.playwright-browsers/
-playwright-report/
-test-results/

@@ -1,13 +1,13 @@
 {
   "name": "screen-recorder",
-  "version": "1.0.0",
-  "description": "Extensão Chrome (Manifest V3) para gravar a tela e áudio do sistema, com timer, pausa/retomada e modo invisível durante screen share.",
-  "main": "audio-processor.js",
+  "version": "4.0.0",
+  "description": "Extensão Chrome (Manifest V3) para gravar tela e áudio (sistema + microfone), com pausa/retomada e transcrição ao vivo (Deepgram) ou posterior (ElevenLabs).",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "build": "webpack",
+    "build:prod": "webpack --mode production",
     "dev": "webpack --watch",
     "test": "jest",
     "test:watch": "jest --watch",

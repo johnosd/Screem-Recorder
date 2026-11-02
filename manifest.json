@@ -5,7 +5,6 @@
   "description": "Grave sua tela com áudio do sistema + microfone. Funciona com Meet, YouTube, etc.",
   "permissions": [
     "tabs",
-    "activeTab",
     "windows",
     "storage"
   ],

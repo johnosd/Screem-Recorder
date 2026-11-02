@@ -1,14 +1,16 @@
 const path = require('path')
 const CopyPlugin = require('copy-webpack-plugin')
 
-module.exports = {
-  mode: 'development',
-  devtool: 'cheap-source-map',
+// `npm run build` gera desenvolvimento (com source maps); `npm run build:prod` minifica.
+module.exports = (env, argv) => ({
+  mode: argv.mode || 'development',
+  devtool: argv.mode === 'production' ? false : 'cheap-source-map',
 
   entry: {
     background: './src/background.js',
     popup: './src/popup.js',
     recorder: './src/recorder.js',
+    'mp3-worker': './src/mp3-worker.js',
   },
 
   output: {
@@ -23,4 +25,4 @@ module.exports = {
       ],
     }),
   ],
-}
+})

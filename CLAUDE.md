@@ -12,6 +12,8 @@ Extensão Chrome Manifest V3 para gravar tela e áudio, com microfone opcional e
 npm install
 npm test
 npm run build
+npm run build:prod   # bundle minificado, sem source maps
+npm run test:e2e     # Playwright com a extensão carregada no Chromium
 ```
 
 O projeto tem testes Jest e comandos de teste e build no `package.json`. Não há script de lint nem de type-check declarado. Não edite `dist/` manualmente.
@@ -21,9 +23,10 @@ Para verificar comportamento no Chrome, rode o build, carregue a raiz deste repo
 ## Arquitetura
 
 - `src/popup.js` abre ou restaura a janela do gravador.
-- `src/background.js` é o service worker que solicita a captura de tela.
+- `src/background.js` é um service worker vazio (reservado). Ele continua declarado no manifest porque os testes e2e obtêm o ID da extensão a partir dele. A captura de tela é pedida em `recorder.js`.
 - `src/recorder.js` coordena captura, mixagem de áudio, gravação, transcrição e downloads.
-- `src/audio-processor.js` processa PCM para a transcrição.
+- `src/audio-processor.js` processa PCM para a transcrição ao vivo.
+- `src/mp3-worker.js` codifica MP3 fora da thread principal; `src/webm-finalize.js` regrava o WebM com duração; `src/recording-profile.js` define os perfis de qualidade; `src/deepgram-live.js` e `src/unload-guard.js` isolam o fechamento do Deepgram e o aviso de saída.
 - `recorder.html` e `popup.html` definem as interfaces da extensão.
 - `manifest.json` declara permissões, páginas e service worker.
 
