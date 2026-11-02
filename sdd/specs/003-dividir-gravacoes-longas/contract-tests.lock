@@ -1,0 +1,12 @@
+{
+  "feature": "003-dividir-gravacoes-longas",
+  "lockedAt": "2026-11-02 17:38",
+  "total": 5,
+  "files": [
+    {
+      "path": "tests/unit/split-recording.contract.test.js",
+      "sha256": "108f56d4ba39afde68901c65585ae3b49120d6673260389a2904d58cf79c50c7",
+      "tests": 5
+    }
+  ]
+}

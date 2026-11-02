@@ -1,16 +1,22 @@
 {
   "name": "screen-recorder",
-  "version": "1.0.0",
-  "description": "Extensão Chrome (Manifest V3) para gravar a tela e áudio do sistema, com timer, pausa/retomada e modo invisível durante screen share.",
-  "main": "audio-processor.js",
+  "version": "4.0.0",
+  "description": "Extensão Chrome (Manifest V3) para gravar tela e áudio (sistema + microfone), com pausa/retomada e transcrição ao vivo (Deepgram) ou posterior (ElevenLabs).",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "build": "webpack",
+    "build:prod": "webpack --mode production",
     "dev": "webpack --watch",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e:install": "node tests/e2e/run.mjs install chromium",
+    "test:e2e": "npm run build && node tests/e2e/run.mjs test",
+    "test:elevenlabs:live": "node --experimental-default-type=module --test tests/integration/elevenlabs-live.test.mjs",
+    "test:deepgram:live": "node --experimental-default-type=module --test tests/integration/deepgram-live.test.mjs",
+    "test:deepgram:auth": "node --experimental-default-type=module tests/integration/deepgram-live.test.mjs --auth-only",
+    "test:elevenlabs:auth": "node --experimental-default-type=module tests/integration/elevenlabs-live.test.mjs --auth-only"
   },
   "repository": {
     "type": "git",
@@ -26,10 +32,25 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.2",
+    "@playwright/test": "^1.64.1",
     "babel-jest": "^30.3.0",
     "copy-webpack-plugin": "^14.0.0",
+    "fake-indexeddb": "^6.2.7",
     "jest": "^30.3.0",
     "webpack": "^5.106.2",
     "webpack-cli": "^7.0.2"
+  },
+  "dependencies": {
+    "mediabunny": "^1.63.0"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/unit/**/*.test.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/e2e/",
+      "/tests/integration/"
+    ]
   }
 }

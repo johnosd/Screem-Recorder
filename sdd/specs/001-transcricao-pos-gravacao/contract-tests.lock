@@ -1,0 +1,12 @@
+{
+  "feature": "001-transcricao-pos-gravacao",
+  "lockedAt": "2026-11-02 16:57",
+  "total": 5,
+  "files": [
+    {
+      "path": "tests/unit/post-transcription.contract.test.js",
+      "sha256": "9f5bbeca7ff99d63df6a7d5e5bb0ba1fc714b743035bdd124647c6670e07eb3f",
+      "tests": 5
+    }
+  ]
+}

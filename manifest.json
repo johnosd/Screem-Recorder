@@ -4,15 +4,14 @@
   "version": "4.0.0",
   "description": "Grave sua tela com áudio do sistema + microfone. Funciona com Meet, YouTube, etc.",
   "permissions": [
-    "desktopCapture",
     "tabs",
-    "activeTab",
     "windows",
     "storage"
   ],
   "host_permissions": [
     "wss://api.deepgram.com/*",
-    "https://api.deepgram.com/*"
+    "https://api.deepgram.com/*",
+    "https://api.elevenlabs.io/*"
   ],
   "action": {
     "default_popup": "popup.html",
