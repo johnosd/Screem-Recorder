@@ -141,10 +141,12 @@ Execução vermelha confirmada: 1 suíte, 5 testes falharam apenas pelos stubs/a
 
 ## Estado Atual
 
-<!-- Sobrescrita a cada checkpoint pelo sdd-execute. Vazia na criação. -->
-
 | Área | Estado |
 | --- | --- |
+| Fundação | Concluída localmente: T001–T006 e T002a; 20/20 testes estreitos. |
+| P1 gravação | Código concluído: T007–T011; usuário confirmou gravação pausada com SRT contra reprodução e modo Só Áudio no Chrome. Cancelamento com texto anterior passou no E2E simulado; T012 segue parcial para Deepgram ao vivo e estados de erro/cancelamento na captura real. |
+| P2 arquivo salvo | Código concluído: T013–T014; quatro formatos curtos cobertos no Chromium com resposta simulada e MP4/AAC confirmado pelo usuário no Chrome real. T015 aguarda demais formatos com serviço real, WebM longo e memória. |
+| Polish | T016–T018 e T020/T022–T027 concluídas; transcrição, SRT agrupado, gravação pausada, modo Só Áudio e importação MP4/AAC confirmados pelo usuário no Chrome. T019 permanece parcial para os demais cenários; T021 descartada no fluxo atual. Gate local: 52/52 Jest, 12/12 Playwright, build e trava íntegra. |
 
 ## Riscos e Decisões
 
@@ -158,7 +160,11 @@ Execução vermelha confirmada: 1 suíte, 5 testes falharam apenas pelos stubs/a
 | R-004 | Erros HTTP e mensagens de serviço podem carregar dados sensíveis | Vazamento da chave ou conteúdo em logs/erros | Mapear apenas códigos e categorias para a UI; não logar headers, corpo de requisição ou resposta bruta. |
 | R-005 | Diagrama de captura no README diverge do código atual | Executor pode escolher camada/API erradas | Usar `src/recorder.js` como fonte; atualizar README no Polish com comportamento efetivo. |
 | R-006 | Escolha da API com evidência parcial | Inglês, acurácia contra referência humana e arquivos longos ainda podem revelar limitação | ElevenLabs escolhida pelo usuário após quatro amostras PT-BR; validar inglês e Chrome antes de aceitar a feature, manter adaptador extensível conforme ADR-001. |
-| R-007 | Remux rápido no Node pode falhar ou consumir memória demais no Chrome | Vídeos longos ou MP4 com outros codecs podem não ser transcritos | Testar WebM longo, MP4/AAC e pausa no Chrome; usar leitura sob demanda e saída em chunks quando possível; verificar faixa copiada; erro recuperável sem fallback de envio de vídeo. |
+| R-007 | Remux rápido no Node pode falhar ou consumir memória demais no Chrome | Vídeos longos ou MP4 com outros codecs podem não ser transcritos | Testar WebM longo, MP4/AAC e pausa no Chrome; usar leitura sob demanda e saída em chunks quando possível; verificar faixa copiada; erro recuperável sem fallback de envio de vídeo; teste Node rejeitou AC3, mas o Chrome segue pendente. |
+
+| R-008 | Resposta Scribe com texto e tempos por palavra ausentes ou inválidos | Antes o app descartava o texto; depois uma única palavra inválida bloqueava todo o SRT | Preservar TXT; quando houver intervalos válidos, agrupar texto sem tempo próprio ao trecho válido vizinho, sem inventar valores numéricos, e avisar que a sincronização dessas palavras é aproximada. Se não houver intervalo válido, bloquear SRT. Revalidar no Chrome real. |
+| R-009 | HTTP 400 após solicitar SRT nativo no teste real | A rejeição se repetiu com a chave que transcreve sem `additional_formats`; a resposta original não foi capturada, então não há diagnóstico interno confirmado | Retirar o campo do pedido, manter SRT local agrupado a partir de `words` e mostrar status HTTP/campo sem corpo ou chave. GET do transcript retorna JSON, não oferece conversão posterior para SRT. T021 descartada no fluxo atual. |
+| R-010 | ElevenLabs bloqueou STT com `detected_unusual_activity` na conta free apesar de `GET /v1/user` 200 | Chave válida para consulta não basta para provar permissão de STT; a restrição da chave antiga persiste sem resolução conhecida | Mostrar bloqueio específico na UI e manter teste real separado dos testes padrão. Outra chave do usuário transcreveu e gerou SRT local no Chrome, sem atribuir isso à recuperação da conta antiga. |
 
 ## Execution Notes
 
@@ -166,17 +172,38 @@ Execução vermelha confirmada: 1 suíte, 5 testes falharam apenas pelos stubs/a
 
 | Data | Fase/Story | Resumo | Pendência Principal |
 | --- | --- | --- | --- |
+| 2026-11-01 | Foundational | Remux WebM/Opus e MP4/AAC, sessão, ElevenLabs e SRT; 20 testes estreitos verdes. | Chrome ainda não verificado. |
+| 2026-11-01 | P1 | onstop entrega Blob final; transcrição explícita, texto anterior e downloads integrados; 5 contratos verdes. | T012: captura e serviço real no Chrome. |
+| 2026-11-01 | P2 | Seleção WebM/MP4/MP3 e reuso da sessão; testes Node de mídia, tipo e erros. | T015: formatos e memória no Chrome. |
+| 2026-11-01 | Polish | README, manifesto e evidências sincronizados; 36/36 testes, build e trava íntegra. | T019: quickstart Chrome/ElevenLabs real. |
+| 2026-11-01 | Chrome real / T020 | Usuário instalou a extensão e relatou INCOMPLETE_RESULT após resposta ElevenLabs; fallback TXT sem tempos passou em 37/37 Jest e 3/3 E2E Chromium. | T019: resposta real não inspecionada; recarregar extensão e validar no Chrome sem atribuir percentual de processamento à API. |
+| 2026-11-01 | Chrome real / T021 | Mesma chamada solicita SRT nativo; valida exportação e usa palavras como alternativa. 41/41 Jest, 4/4 E2E Chromium, build e contratos verdes. | T019: confirmar download SRT com nova resposta real após salvar a mídia e recarregar a extensão. |
+| 2026-11-01 | Chrome real / T022 | Usuário relatou “Arquivo inválido ou corrompido” após aguardar a ElevenLabs, sem consumo de créditos. A UI mapeava 400/422 para mídia inválida; agora mostra HTTP/campo seguro. 43/43 Jest, 5/5 E2E Chromium, build e contratos verdes. | T019: resposta real 400/422 não armazenada; causa da rejeição ainda não confirmada. |
+| 2026-11-01 | Chrome real / T023 | Usuário viu HTTP 400 novamente, sem campo informado. Retirado `additional_formats`; contagem de tempos adicionada sem conteúdo. 45/45 Jest, 5/5 E2E Chromium, build e contratos verdes. | T019: confirmar TXT e informar contagens da resposta real; T021 suspensa. |
+| 2026-11-01 | API real / T024 | Teste autorizado com chave do `.env` e amostra curta: `GET /v1/user` 200, conta free; STT 401 `detected_unusual_activity`, sem texto ou SRT. UI corrigida; 46/46 Jest, 6/6 E2E isolados. | T019/T021: restrição do provedor impede validação real até mudança externa. |
+| 2026-11-01 | Chrome real / T025 | Usuário confirmou texto com outra chave: 6.034 palavras, 5.934 tempos válidos e 100 inválidos. Corrigido bloqueio total do SRT, com agrupamento dos trechos sem tempo próprio e aviso na UI. 49/49 Jest, 7/7 Playwright, build e trava íntegra. | Recarregar extensão e testar SRT com a resposta real; T019/T021 ainda pendentes. |
+| 2026-11-01 | Legendas / T026 | Usuário confirmou SRT real gerado pela alternativa local, mas uma palavra por legenda. Alternativa local agora agrupa palavras em frases; pedido de SRT nativo reativado na mesma transcrição conforme solicitação. 52/52 Jest e 8/8 Playwright com resposta simulada. | Confirmar SRT nativo no Chrome com a chave que funcionou; 400 anterior permanece sem causa provada. |
+| 2026-11-01 | HTTP 400 / T027 | O usuário recebeu HTTP 400 após reativar `additional_formats` com a chave funcional. Pedido nativo removido novamente; SRT local agrupado permanece. Docs de GET conferidas: só recupera JSON, sem exportação SRT. | Recarregar extensão e confirmar transcrição e SRT agrupado no Chrome; não repetir pedido nativo sem diagnóstico novo. |
+| 2026-11-01 | Confirmação Chrome / T019 parcial | Usuário informou que a versão após T027 funciona corretamente. Pelo contexto, transcrição com chave funcional e SRT local agrupado estão confirmados por relato do usuário; nenhuma captura ou arquivo dessa tentativa foi inspecionado pelo agente. | T012/T015/T019: completar captura pausada, formatos, arquivo longo, memória e sincronismo por reprodução. |
+| 2026-11-01 | Pausa e importação / T012, T015 | Usuário confirmou gravação pausada e SRT contra reprodução no Chrome. Playwright passou 11/11 após cobrir os quatro formatos curtos com resposta simulada; MP4/AAC enviou M4A só de áudio. | T012/T015/T019: Só Áudio e demais estados P1, formatos com serviço real, WebM longo e memória. |
+| 2026-11-01 | MP4/AAC real / T015 parcial | Usuário confirmou importação MP4/AAC com transcrição e downloads TXT/SRT no Chrome após orientação específica. Payload e arquivos da tentativa não foram inspecionados pelo agente. | T012/T015/T019: Só Áudio, demais formatos com serviço real, WebM longo e memória. |
+| 2026-11-01 | Só Áudio real / T012 parcial | Usuário esclareceu que o arquivo de áudio que funcionou veio de gravação no modo Só Áudio, não de importação; confirmou o fluxo sugerido no Chrome. Mídia e requisição não foram inspecionadas pelo agente. | T012/T015/T019: estados de erro/cancelamento, texto ao vivo, formatos importados restantes e WebM longo/memória. |
+| 2026-11-01 | Cancelamento E2E / T012, T019 parciais | Chromium confirmou que cancelar nova transcrição simulada preserva texto anterior e botões TXT/SRT; suíte completa 12/12 com build. O cenário usa arquivo importado e resposta simulada. | Validar Deepgram ao vivo e cancelamento na captura real; importações restantes e WebM longo/memória. |
 
-**PRÓXIMO**: —
+**PRÓXIMO**: validar Deepgram ao vivo e cancelamento na captura real; depois importações de MP3/WebM de áudio e WebM longo com medição de memória. Registrar resultados em `qa-evidence.md`.
 
 ## Arquivos Principais
 
-<!-- Sobrescrita a cada checkpoint — foco da etapa atual, não a árvore inteira. -->
-
-- (nenhum ainda)
+- `src/recorder.js`, `recorder.html`, `manifest.json`: captura, UI e destinos.
+- `src/post-transcription-audio.js`, `src/post-transcription-client.js`, `src/post-transcription-providers/elevenlabs.js`: preparação e envio.
+- `src/post-transcription-session.js`, `src/subtitles.js`: estado e SRT.
+- `e2e/extension.spec.cjs`, `src/fixtures/`: quatro formatos curtos em Chromium com resposta simulada.
+- `sdd/specs/001-transcricao-pos-gravacao/qa-evidence.md`: gates locais, confirmação manual e cenários pendentes.
 
 ## Cuidados para Retomada
 
 <!-- Armadilhas operacionais específicas desta feature, anexadas conforme descobertas. -->
 
-- (nenhum ainda)
+- No PowerShell desta sessão, invocar `npm.cmd`; scripts `.ps1` exigiram `powershell -NoProfile -ExecutionPolicy Bypass -File ...` por política de execução local.
+- Ferramentas de interface não conectaram ao Chrome (`native pipe is unavailable` e `privileged native pipe bridge is not available`); retomar T012/T015/T019 apenas com uma superfície Chrome controlável.
+- Os testes com `src/fixtures/` são de mídia sintética curta em Node; não substituem WebM longo, captura, AV ou memória no Chrome.

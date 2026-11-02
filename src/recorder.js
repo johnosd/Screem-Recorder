@@ -1,4 +1,7 @@
 import { fmt } from './utils/timer.js';
+import { createPostTranscriptionSession } from './post-transcription-session.js';
+import { transcribePreRecorded } from './post-transcription-client.js';
+import { buildSrt, groupCaptionSegments, validSegments, validSrt } from './subtitles.js';
 
 
 // recorder.js v4 — Runs in recorder.html (extension page in its own tab)
@@ -25,6 +28,10 @@ let transcriptFull = '';
 let transcriptSegments = [];
 let audioWorkletNode = null;
 let transcriptAudioCtx = null;
+let recordedBlob = null;
+let stopping = false;
+let wasPaused = false;
+let postSession;
 
 // ---- DOM ----
 const $ = (s) => document.getElementById(s) || document.querySelector(s);
@@ -34,6 +41,78 @@ const btnDl = $('btn-dl'), btnDlMp3 = $('btn-dl-mp3'), btnDiscard = $('btn-disca
 const timer = $('timer'), st = $('st'), wave = $('wave');
 const doneLabel = $('done-label'), doneDur = $('done-dur'), doneSub = $('done-sub');
 const errEl = $('err'), warnEl = $('warn'), logEl = $('log');
+
+const postMessages = {
+  KEY_REQUIRED: 'Informe e salve a chave ElevenLabs em ⚙ Configurações para transcrever.',
+  AUTH_FAILED: 'Chave ElevenLabs recusada. Confira a chave e tente novamente.',
+  ACTIVITY_RESTRICTED: 'A ElevenLabs bloqueou a transcrição por atividade incomum nesta conta ou rede. Verifique a conta ou procure o suporte da ElevenLabs.',
+  AUDIO_TOO_LARGE: 'O áudio preparado excede o limite de 5 GB da ElevenLabs.',
+  INVALID_MEDIA: 'Arquivo inválido ou corrompido.',
+  REQUEST_REJECTED: 'A ElevenLabs rejeitou a solicitação',
+  UNSUPPORTED_MEDIA: 'Formato ou tipo de arquivo não aceito.',
+  NO_AUDIO: 'Este vídeo não contém uma faixa de áudio utilizável.',
+  UNSUPPORTED_CODEC: 'A faixa de áudio não pode ser copiada sem conversão.',
+  NETWORK_ERROR: 'Sem conexão com a ElevenLabs. Tente novamente.',
+  RATE_LIMITED: 'Limite temporário da ElevenLabs. Tente novamente mais tarde.',
+  TIMEOUT: 'A ElevenLabs demorou demais para responder. Tente novamente.',
+  SERVICE_UNAVAILABLE: 'ElevenLabs indisponível. Tente novamente.',
+  INCOMPLETE_RESULT: 'A resposta não trouxe tempos válidos para as legendas.',
+  TRANSCRIPTION_FAILED: 'Não foi possível concluir a transcrição.'
+};
+
+function getElevenLabsKey() {
+  return new Promise(resolve => chrome.storage.local.get('elevenLabsKey',
+    result => resolve(result.elevenLabsKey || '')));
+}
+
+function renderPostState(state) {
+  const processing = state.status === 'processing';
+  $('post-start').disabled = processing || !state.source;
+  $('post-start').textContent = state.status === 'error' || state.status === 'cancelled' ||
+    state.status === 'no-speech' ? 'Tentar novamente' : 'Transcrever áudio';
+  $('post-cancel').classList.toggle('hidden', !processing);
+  const stages = { preparing: 'Preparando áudio localmente', sending: 'Enviando somente áudio à ElevenLabs',
+    waiting: 'Envio em andamento; aguardando resposta da ElevenLabs' };
+  const counts = state.transcript?.timingInfo;
+  const timingSummary = counts
+    ? ` ${counts.words} ${counts.words === 1 ? 'palavra' : 'palavras'}; ${counts.valid} ${counts.valid === 1 ? 'tempo válido' : 'tempos válidos'}${counts.missing ? `; ${counts.missing} ${counts.missing === 1 ? 'ausente' : 'ausentes'}` : ''}${counts.invalid ? `; ${counts.invalid} ${counts.invalid === 1 ? 'inválido' : 'inválidos'}` : ''}.`
+    : '';
+  const statusText = {
+    idle: '', ready: 'Arquivo pronto para transcrição.', completed: validSrt(state.transcript?.srt) || validSegments(state.transcript?.segments)
+      ? counts && !validSrt(state.transcript?.srt) && counts.valid > 0 && counts.missing + counts.invalid > 0
+        ? `Transcrição concluída. SRT disponível com palavras sem tempo próprio agrupadas às vizinhas; sincronização aproximada nesses trechos.${timingSummary}`
+        : 'Transcrição concluída.'
+      : `Transcrição concluída. TXT disponível; SRT indisponível sem tempos válidos.${timingSummary}`,
+    cancelled: 'Transcrição cancelada. A mídia e o texto anterior permanecem disponíveis.',
+    'no-speech': 'Nenhuma fala reconhecível. Nenhum TXT ou SRT vazio será gerado.',
+    error: state.error === 'REQUEST_REJECTED'
+      ? `${postMessages.REQUEST_REJECTED} (HTTP ${state.errorInfo?.httpStatus || '?'}${state.errorInfo?.field ? `; campo ${state.errorInfo.field}` : ''}).`
+      : postMessages[state.error] || postMessages.TRANSCRIPTION_FAILED
+  };
+  $('post-status').textContent = processing
+    ? `${stages[state.stage] || 'Processando'}${state.stage === 'preparing' && Number.isFinite(state.progress) ? ` (${Math.round(state.progress * 100)}%)` : ''}.`
+    : statusText[state.status];
+  const transcript = state.transcript;
+  const hasText = Boolean(transcript?.text?.trim());
+  $('transcript-done-block').classList.toggle('hidden', !hasText);
+  $('transcript-preview').textContent = hasText ? transcript.text : '';
+  $('btn-dl-txt').disabled = !hasText;
+  $('btn-dl-srt').disabled = !hasText || !(validSrt(transcript?.srt) || validSegments(transcript?.segments)) ||
+    (transcript.origin === 'live' && wasPaused);
+  $('btn-dl-srt').title = transcript?.origin === 'live' && wasPaused
+    ? 'Após uma gravação pausada, transcreva o arquivo final para obter SRT sincronizado.' : '';
+}
+
+function resetPostSession() {
+  postSession?.cancel();
+  postSession = createPostTranscriptionSession({
+    transcribe: async ({ media, language, signal, onStage }) =>
+      transcribePreRecorded({ media, language, signal, onStage, key: await getElevenLabsKey() })
+  });
+  postSession.subscribe(renderPostState);
+}
+
+resetPostSession();
 
 // ---- Helpers ----
 function view(name) {
@@ -174,11 +253,15 @@ btnStart.addEventListener('click', async () => {
     log('MIME: ' + mime);
 
     chunks = [];
+    recordedBlob = null;
+    stopping = false;
+    wasPaused = false;
     mediaRecorder = new MediaRecorder(finalStream, {
       mimeType: mime,
       videoBitsPerSecond: mode === 'video' ? 5000000 : undefined,
       audioBitsPerSecond: 128000
     });
+    const recorderForSession = mediaRecorder;
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
@@ -187,8 +270,23 @@ btnStart.addEventListener('click', async () => {
     };
 
     mediaRecorder.onstop = () => {
+      if (mediaRecorder !== recorderForSession) return;
       const totalBytes = chunks.reduce((s, c) => s + c.size, 0);
       log(`Recorder stopped. ${chunks.length} chunks, ${(totalBytes/1024/1024).toFixed(2)} MB`);
+      if (!totalBytes) {
+        doneSub.textContent = 'Gravação vazia. Tente novamente.';
+        return;
+      }
+      recordedBlob = new Blob(chunks, { type: mode === 'video' ? 'video/webm' : 'audio/webm' });
+      postSession.setSource({ blob: recordedBlob, name: `${recordingFilename}.webm`,
+        origin: 'recorded', kind: mode });
+      if (transcriptFull.trim()) {
+        postSession.setExistingTranscript({ text: transcriptFull.trim(), segments: transcriptSegments,
+          language: transcriptLang, origin: 'live' });
+      }
+      doneSub.textContent = 'Arquivo .webm pronto';
+      btnDl.disabled = false;
+      btnDlMp3.disabled = false;
     };
 
     mediaRecorder.onerror = (e) => {
@@ -214,6 +312,7 @@ btnStart.addEventListener('click', async () => {
     paused = false;
     transcriptFull = '';
     transcriptSegments = [];
+    resetPostSession();
     updateTranscriptLive('');
     document.getElementById('transcript-panel').classList.toggle('hidden', !transcriptEnabled);
     document.getElementById('transcript-done-block').classList.add('hidden');
@@ -253,6 +352,7 @@ btnPause.addEventListener('click', () => {
   if (!paused) {
     mediaRecorder.pause();
     paused = true;
+    wasPaused = true;
     pauseStart = Date.now();
     clearInterval(timerInterval);
     timerInterval = null;
@@ -284,11 +384,13 @@ function setRecUI(s) {
 btnStop.addEventListener('click', () => doStop());
 
 function doStop() {
+  if (stopping || !mediaRecorder) return;
+  stopping = true;
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (pauseStart) { pausedMs += Date.now() - pauseStart; pauseStart = null; }
   finalDur = fmt(Date.now() - startTime - pausedMs);
 
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+  if (mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
   stopTranscription();
@@ -301,26 +403,23 @@ function doStop() {
 
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   recordingFilename = `${mode === 'video' ? 'gravacao-video' : 'gravacao-audio'}_${ts}`;
+  $('done-title').textContent = 'Gravação Concluída';
   doneLabel.textContent = mode === 'video' ? 'Vídeo + Áudio' : 'Só Áudio';
   doneDur.textContent = 'Duração: ' + finalDur;
-  doneSub.textContent = 'Arquivo .webm pronto';
+  doneSub.textContent = 'Finalizando gravação...';
+  btnDl.disabled = true;
+  btnDlMp3.disabled = true;
+  btnDl.style.display = '';
+  btnDiscard.textContent = 'Descartar';
   btnDlMp3.style.display = mode === 'audio' ? '' : 'none';
-  if (transcriptFull.trim()) {
-    const tBlock = document.getElementById('transcript-done-block');
-    const tPreview = document.getElementById('transcript-preview');
-    if (tBlock) tBlock.classList.remove('hidden');
-    if (tPreview) tPreview.textContent = transcriptFull.trim().slice(0, 400) + (transcriptFull.length > 400 ? '…' : '');
-  }
   view('done');
   log('Stopped. Duration: ' + finalDur);
 }
 
 // ---- DOWNLOAD ----
 btnDl.addEventListener('click', () => {
-  if (chunks.length === 0) { showErr('Nenhum dado!'); return; }
-
-  const isV = mode === 'video';
-  const blob = new Blob(chunks, { type: isV ? 'video/webm' : 'audio/webm' });
+  if (!recordedBlob) { doneSub.textContent = 'Aguardando finalização da gravação.'; return; }
+  const blob = recordedBlob;
   log('Download: ' + (blob.size / 1024 / 1024).toFixed(2) + ' MB');
 
   const url = URL.createObjectURL(blob);
@@ -373,12 +472,12 @@ async function encodeMp3(webmBlob) {
 
 // ---- DOWNLOAD MP3 ----
 btnDlMp3.addEventListener('click', async () => {
-  if (chunks.length === 0) { showErr('Nenhum dado!'); return; }
+  if (!recordedBlob) { doneSub.textContent = 'Aguardando finalização da gravação.'; return; }
 
   btnDlMp3.disabled = true;
   btnDlMp3.textContent = 'Convertendo…';
   try {
-    const webmBlob = new Blob(chunks, { type: 'audio/webm' });
+    const webmBlob = recordedBlob;
     const mp3Blob = await encodeMp3(webmBlob);
     log('MP3: ' + (mp3Blob.size / 1024 / 1024).toFixed(2) + ' MB');
 
@@ -403,7 +502,10 @@ btnDlMp3.addEventListener('click', async () => {
 // ---- DISCARD ----
 btnDiscard.addEventListener('click', () => {
   chunks = [];
+  recordedBlob = null;
   mediaRecorder = null;
+  resetPostSession();
+  $('import-file').value = '';
   cleanup();
   view('idle');
   log('Discarded');
@@ -430,7 +532,7 @@ function saveApiKey(key) {
 async function startTranscription(stream) {
   const apiKey = await getApiKey();
   if (!apiKey) {
-    showWarn('⚠ API key Deepgram não configurada. Ative o toggle e salve a key antes de gravar.');
+    showWarn('⚠ API key Deepgram não configurada. Salve a key em ⚙ Configurações antes de gravar.');
     return;
   }
 
@@ -492,10 +594,10 @@ function updateTranscriptLive(text) {
 document.getElementById('toggle-transcript').addEventListener('change', (e) => {
   transcriptEnabled = e.target.checked;
   document.getElementById('lang-row').classList.toggle('hidden', !transcriptEnabled);
-  if (transcriptEnabled) {
-    getApiKey().then(k => { if (k) document.getElementById('input-api-key').value = k; });
-  }
 });
+
+$('btn-settings').addEventListener('click', () => $('card').classList.add('settings-open'));
+$('btn-settings-close').addEventListener('click', () => $('card').classList.remove('settings-open'));
 
 document.querySelectorAll('.lbtn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -546,24 +648,11 @@ document.getElementById('btn-save-key').addEventListener('click', async () => {
   }
 });
 
-function buildSRT(segments) {
-  function fmtTime(s) {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = Math.floor(s % 60);
-    const ms = Math.round((s % 1) * 1000);
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
-  }
-  return segments
-    .filter(seg => seg.text.trim())
-    .map((seg, i) => `${i + 1}\n${fmtTime(seg.start)} --> ${fmtTime(seg.end)}\n${seg.text.trim()}`)
-    .join('\n\n');
-}
-
 document.getElementById('btn-dl-txt').addEventListener('click', () => {
-  if (!transcriptFull.trim()) return;
+  const transcript = postSession.getSnapshot().transcript;
+  if (!transcript?.text?.trim()) return;
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const blob = new Blob([transcriptFull.trim()], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([transcript.text.trim()], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -575,8 +664,13 @@ document.getElementById('btn-dl-txt').addEventListener('click', () => {
 });
 
 document.getElementById('btn-dl-srt').addEventListener('click', () => {
-  if (!transcriptSegments.length) return;
-  const blob = new Blob([buildSRT(transcriptSegments)], { type: 'text/plain;charset=utf-8' });
+  const transcript = postSession.getSnapshot().transcript;
+  if (transcript?.origin === 'live' && wasPaused) return;
+  const srt = validSrt(transcript?.srt) ? transcript.srt
+    : validSegments(transcript?.segments) ? buildSrt(transcript.origin === 'post'
+      ? groupCaptionSegments(transcript.segments) : transcript.segments) : null;
+  if (!srt) return;
+  const blob = new Blob([srt], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -585,6 +679,54 @@ document.getElementById('btn-dl-srt').addEventListener('click', () => {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 15000);
+});
+
+$('post-start').addEventListener('click', async () => {
+  try {
+    await postSession.start({ language: $('post-lang').value, confirmedExternalSend: true });
+  } catch (error) {
+    $('post-status').textContent = postMessages[error.code] || 'A gravação ainda não está pronta.';
+  }
+});
+
+$('post-cancel').addEventListener('click', () => postSession.cancel());
+
+$('post-save-key').addEventListener('click', () => {
+  const key = $('post-key').value.trim();
+  if (!key) {
+    $('post-key-status').textContent = 'Informe uma chave ElevenLabs.';
+    return;
+  }
+  chrome.storage.local.set({ elevenLabsKey: key }, () => {
+    $('post-key-status').textContent = 'Chave salva localmente. A validade será conferida na próxima transcrição.';
+    $('post-key').value = '';
+  });
+});
+
+$('import-file').addEventListener('change', event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const extension = file.name.toLowerCase().match(/\.(webm|mp4|mp3)$/)?.[1];
+  const allowed = { webm: ['video/webm', 'audio/webm'], mp4: ['video/mp4'],
+    mp3: ['audio/mpeg', 'audio/mp3'] };
+  if (!extension || !allowed[extension].includes(file.type) || !file.size) {
+    $('import-file-name').textContent = 'Arquivo inválido ou tipo incompatível. Escolha WebM, MP4 ou MP3 válido.';
+    event.target.value = '';
+    return;
+  }
+  resetPostSession();
+  recordingFilename = file.name.replace(/\.(webm|mp4|mp3)$/i, '');
+  postSession.setSource({ blob: file, name: file.name, origin: 'selected',
+    kind: file.type.startsWith('video/') ? 'video' : 'audio' });
+  $('import-file-name').textContent = file.name;
+  $('done-title').textContent = 'Arquivo selecionado';
+  doneSub.textContent = 'Pronto para transcrição';
+  doneLabel.textContent = file.name;
+  doneDur.textContent = file.type;
+  btnDl.style.display = 'none';
+  btnDlMp3.style.display = 'none';
+  btnDiscard.textContent = 'Selecionar outro arquivo';
+  view('done');
 });
 
 // ---- Init ----
@@ -596,5 +738,8 @@ getApiKey().then(k => {
     statusEl.textContent = '✓ Key salva';
     statusEl.classList.remove('hidden');
   }
+});
+getElevenLabsKey().then(k => {
+  $('post-key-status').textContent = k ? 'Chave ElevenLabs salva localmente.' : 'Chave ElevenLabs ainda não configurada.';
 });
 log('Recorder page loaded. Ready.');

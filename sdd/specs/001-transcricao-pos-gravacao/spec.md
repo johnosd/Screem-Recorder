@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-31
 
-**Status**: Planejada
+**Status**: Em Execução
 
 **Input**: "eu como suaurio do app screen recorder quero pode transcrever as gravações de videos apos a gravação"
 

@@ -38,6 +38,7 @@
     }
 
     .card {
+      position: relative;
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 20px;
@@ -45,6 +46,27 @@
       overflow: hidden;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
+
+    /* Settings (gear + panel) */
+    .btn-gear {
+      position: absolute; top: 22px; right: 20px; z-index: 2;
+      width: 34px; height: 34px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text2); cursor: pointer; transition: all 0.2s;
+    }
+    .btn-gear:hover { color: var(--text); background: var(--bg3); }
+    .btn-gear svg { width: 18px; height: 18px; }
+    .card.settings-open > .v, .card.settings-open > .foot, .card.settings-open > .log-area,
+    .card.settings-open > .btn-gear { display: none; }
+    .settings { display: none; }
+    .card.settings-open > .settings { display: block; }
+    .settings-sec { margin: 20px 24px 0; padding: 14px 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); }
+    .settings-sec h3 { font-size: 13px; margin-bottom: 4px; }
+    .settings-sec p { color: var(--text2); font-size: 11px; line-height: 1.5; }
+    .settings-sec .key-status { display: block; }
+    .settings-sec .key-status.hidden { display: none; }
+    .settings .btns { padding-top: 20px; }
 
     /* Header */
     .hdr {
@@ -264,9 +286,16 @@
       border-bottom: 1px solid var(--border);
     }
     .transcript-preview {
-      padding: 10px 12px; max-height: 72px; overflow-y: auto;
+      padding: 10px 12px; max-height: 220px; overflow-y: auto;
       font-size: 12px; color: var(--text2); line-height: 1.6;
+      white-space: pre-wrap;
     }
+    .post-panel { margin: 0 24px 16px; padding: 14px 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); }
+    .post-panel h3 { font-size: 13px; margin-bottom: 8px; }
+    .post-panel p, .post-panel label { color: var(--text2); font-size: 12px; line-height: 1.5; }
+    .post-panel select, .post-panel input[type=password], .post-panel input[type=file] { width: 100%; margin: 8px 0; padding: 8px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+    .post-panel .btn { width: 100%; margin-top: 8px; }
+    .post-status { min-height: 18px; margin-top: 10px; color: var(--yellow); font-size: 12px; }
     .btn-dl-txt {
       display: block; width: 100%; padding: 10px; border: none;
       background: transparent; color: var(--text2); font-family: inherit;
@@ -285,7 +314,40 @@
   </style>
 </head>
 <body>
-  <div class="card">
+  <div id="card" class="card">
+
+    <button id="btn-settings" class="btn-gear" title="Configurações" aria-label="Configurações">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+
+    <!-- ===== SETTINGS ===== -->
+    <div id="v-settings" class="settings">
+      <div class="hdr">
+        <div class="hdr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></div>
+        <div><h1>Configurações</h1><p>Chaves de API das transcrições</p></div>
+      </div>
+      <div class="settings-sec">
+        <h3>Deepgram</h3>
+        <p>Usada na transcrição em tempo real durante a gravação.</p>
+        <div id="api-key-row" class="api-key-row">
+          <input type="password" id="input-api-key" autocomplete="off" placeholder="Deepgram API Key">
+          <button id="btn-save-key" class="btn-save-key">Salvar</button>
+        </div>
+        <div id="key-status" class="key-status hidden"></div>
+      </div>
+      <div class="settings-sec">
+        <h3>ElevenLabs</h3>
+        <p>Usada na transcrição de arquivos e gravações após a captura. Separada da chave Deepgram.</p>
+        <div class="api-key-row">
+          <input id="post-key" type="password" autocomplete="off" placeholder="ElevenLabs API Key">
+          <button id="post-save-key" class="btn-save-key">Salvar</button>
+        </div>
+        <div id="post-key-status" class="key-status"></div>
+      </div>
+      <div class="btns">
+        <button id="btn-settings-close" class="btn btn2">Voltar</button>
+      </div>
+    </div>
 
     <!-- ===== IDLE ===== -->
     <div id="v-idle" class="v on">
@@ -318,15 +380,17 @@
           <input type="checkbox" id="toggle-transcript">
           <span>Transcrição em tempo real</span>
         </label>
+        <p style="color:var(--text2);font-size:11px;line-height:1.5;margin-top:8px">Ao ativar, o áudio da captura será enviado à Deepgram durante a gravação.</p>
         <div id="lang-row" class="lang-row hidden">
           <button class="lbtn on" data-lang="pt-BR">PT-BR</button>
           <button class="lbtn" data-lang="en">EN</button>
         </div>
-        <div id="api-key-row" class="api-key-row">
-          <input type="password" id="input-api-key" placeholder="Deepgram API Key">
-          <button id="btn-save-key" class="btn-save-key">Salvar</button>
-        </div>
-        <div id="key-status" class="key-status hidden"></div>
+      </div>
+      <div class="post-panel">
+        <h3>Transcrever arquivo salvo</h3>
+        <label for="import-file">Selecione vídeo WebM/MP4 ou áudio WebM/MP3. O vídeo será processado localmente e somente o áudio será enviado à ElevenLabs após seu clique.</label>
+        <input id="import-file" type="file" accept="video/webm,video/mp4,audio/webm,audio/mpeg,.webm,.mp4,.mp3">
+        <p id="import-file-name"></p>
       </div>
       <div class="btns">
         <button id="btn-start" class="btn btn1">
@@ -374,7 +438,7 @@
         <div class="hdr-icon" style="background:rgba(52,211,153,0.1)">
           <svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <div><h1>Gravação Concluída</h1><p id="done-sub">Pronto para download</p></div>
+        <div><h1 id="done-title">Gravação Concluída</h1><p id="done-sub">Pronto para download</p></div>
       </div>
       <div class="done-card">
         <h3 id="done-label">Vídeo + Áudio</h3>
@@ -385,6 +449,16 @@
         <div id="transcript-preview" class="transcript-preview"></div>
         <button id="btn-dl-txt" class="btn-dl-txt">↓ Baixar .txt</button>
         <button id="btn-dl-srt" class="btn-dl-txt">↓ Baixar .srt</button>
+      </div>
+      <div id="post-panel" class="post-panel">
+        <h3>Transcrição após gravação</h3>
+        <p>Para vídeos, a faixa de áudio será separada neste computador. Após clicar em Transcrever, somente o áudio será enviado à ElevenLabs.</p>
+        <label for="post-lang">Idioma da fala</label>
+        <select id="post-lang"><option value="pt-BR">Português (Brasil)</option><option value="en">Inglês</option></select>
+        <p>A chave ElevenLabs é configurada em ⚙ Configurações.</p>
+        <p id="post-status" class="post-status" role="status" aria-live="polite"></p>
+        <button id="post-start" class="btn btn1">Transcrever áudio</button>
+        <button id="post-cancel" class="btn btn2 hidden">Cancelar transcrição</button>
       </div>
       <div class="btns">
         <button id="btn-dl" class="btn btn-dl">

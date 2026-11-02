@@ -10,7 +10,11 @@
     "build": "webpack",
     "dev": "webpack --watch",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e:install": "node e2e/run.mjs install chromium",
+    "test:e2e": "npm run build && node e2e/run.mjs test",
+    "test:elevenlabs:live": "node --experimental-default-type=module --test integration/elevenlabs-live.test.mjs",
+    "test:elevenlabs:auth": "node --experimental-default-type=module integration/elevenlabs-live.test.mjs --auth-only"
   },
   "repository": {
     "type": "git",
@@ -26,10 +30,21 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.2",
+    "@playwright/test": "^1.64.1",
     "babel-jest": "^30.3.0",
     "copy-webpack-plugin": "^14.0.0",
     "jest": "^30.3.0",
     "webpack": "^5.106.2",
     "webpack-cli": "^7.0.2"
+  },
+  "dependencies": {
+    "mediabunny": "^1.63.0"
+  },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/e2e/",
+      "/integration/"
+    ]
   }
 }

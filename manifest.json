@@ -11,7 +11,8 @@
   ],
   "host_permissions": [
     "wss://api.deepgram.com/*",
-    "https://api.deepgram.com/*"
+    "https://api.deepgram.com/*",
+    "https://api.elevenlabs.io/*"
   ],
   "action": {
     "default_popup": "popup.html",

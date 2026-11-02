@@ -1,6 +1,6 @@
 # Screen & Audio Recorder
 
-Extensão Chrome (Manifest V3) para gravar tela e áudio com transcrição em tempo real.
+Extensão Chrome (Manifest V3) para gravar tela e áudio, transcrever ao vivo e transcrever gravações ou arquivos salvos sob demanda.
 
 ---
 
@@ -12,7 +12,9 @@ Extensão Chrome (Manifest V3) para gravar tela e áudio com transcrição em te
 - **Auto-minimiza** ao iniciar e **auto-restaura** ao parar — a janela nunca aparece no que você compartilha
 - Download em **.webm** (vídeo) ou **.mp3** (áudio, via conversão local)
 - **Transcrição em tempo real** via Deepgram (~300ms de latência)
-- Download da transcrição em **.txt** (texto corrido) ou **.srt** (legendas sincronizadas com o vídeo)
+- **Transcrição após gravação** via ElevenLabs Scribe v2, mesmo sem transcrição ao vivo
+- Importação de vídeo WebM/MP4 e áudio WebM/MP3 para transcrever sem nova captura
+- Download do texto completo em **.txt** e de legendas em **.srt** após resultado com tempos válidos
 
 ---
 
@@ -27,6 +29,19 @@ npm run dev        # recompila automaticamente ao salvar
 ```
 
 > **Não edite `dist/` manualmente** — tudo que está lá é gerado pelo build.
+
+---
+
+## Testes automatizados no navegador
+
+```bash
+npm run test:e2e:install  # uma vez: baixa o Chromium de testes
+npm run test:e2e          # build + Playwright com a extensão carregada
+```
+
+O teste usa mídia sintética e resposta simulada da ElevenLabs. Os eventos de console, service worker e rede ficam em `test-results/`; em falhas, também há trace e screenshot. Consulte [a estratégia de teste no navegador](sdd/specs/001-transcricao-pos-gravacao/browser-testing.md) e [as evidências da feature](sdd/specs/001-transcricao-pos-gravacao/qa-evidence.md).
+
+O teste real da ElevenLabs é separado: `npm run test:elevenlabs:auth` valida a chave do `.env` sem áudio; `npm run test:elevenlabs:live` transcreve a amostra com fala em `%TEMP%\screen-recorder-stt-eval-20261031\sample01.webm` pelo mesmo cliente do app e pode consumir créditos. Nenhum dos dois integra o Playwright ou o Jest padrão. A saída mostra somente status e contagens, sem chave nem texto transcrito.
 
 ---
 
@@ -46,16 +61,17 @@ Após qualquer alteração no código, rode `npm run build` e clique em **recarr
 
 ### Gravar
 
-1. Clique no ícone da extensão — uma janela separada abre (não uma aba)
+1. Clique no ícone da extensão — uma janela separada abre
 2. Escolha o modo: **Vídeo + Áudio** ou **Só Áudio**
 3. Clique em **Iniciar Gravação**
 4. O Chrome abre o seletor nativo — escolha a tela, janela ou aba
 5. A janela minimiza automaticamente; a gravação corre em background
 6. Para pausar ou parar, clique no ícone da extensão para restaurar a janela
+7. Após parar, espere a mensagem **Arquivo .webm pronto**. O mesmo arquivo final pode ser baixado ou transcrito.
 
-### Transcrição (opcional)
+### Transcrição ao vivo (opcional)
 
-A transcrição usa a [API do Deepgram](https://deepgram.com) — plano gratuito inclui 200 horas/mês.
+A transcrição ao vivo envia áudio da captura à [Deepgram](https://deepgram.com) enquanto o toggle estiver ativo.
 
 **Configuração inicial (uma vez):**
 
@@ -65,9 +81,17 @@ A transcrição usa a [API do Deepgram](https://deepgram.com) — plano gratuito
 
 **Durante a gravação:** o texto aparece ao vivo no painel da extensão.
 
-**Após parar:** dois botões de download ficam disponíveis:
-- **Baixar .txt** — transcrição corrida em texto plano
-- **Baixar .srt** — legendas com timecodes, salvas com o mesmo nome do vídeo para carregamento automático em players como VLC e MPV
+**Após parar:** o texto reconhecido aparece completo e pode ser baixado em TXT. Se a gravação foi pausada, transcreva o arquivo final para gerar SRT sincronizado com a reprodução.
+
+### Transcrição após a gravação
+
+1. Grave em **Vídeo + Áudio** ou **Só Áudio** e espere o arquivo ficar pronto. Também é possível selecionar um arquivo salvo na tela inicial: vídeo WebM/MP4 ou áudio WebM/MP3.
+2. Escolha **Português (Brasil)** ou **Inglês** e salve uma chave ElevenLabs própria. A chave Deepgram não é usada nesse fluxo.
+3. Leia o aviso e clique em **Transcrever áudio**. Para vídeos, a extensão separa localmente a faixa de áudio sem alterar o original e envia somente o áudio à [ElevenLabs](https://elevenlabs.io). Nenhuma preparação ou envio ocorre antes do clique.
+4. Acompanhe a preparação e o aguardo da resposta. É possível cancelar ou tentar novamente. Uma falha preserva a mídia e o texto anterior da janela.
+5. Após uma transcrição com texto, baixe TXT e SRT. O app gera legendas locais agrupadas em frases curtas usando os tempos por palavra retornados pela ElevenLabs. Palavras sem tempo próprio são associadas às vizinhas; esses trechos têm sincronização aproximada, informada na tela. Se não houver intervalos confiáveis, só o TXT fica disponível. Mídia sem fala não gera arquivos vazios.
+
+O áudio preparado deve ter menos de 5 GB conforme o limite da API. Um codec que não possa ser copiado para WebM/Opus ou M4A/AAC é recusado sem enviar vídeo. O cancelamento local impede que uma resposta tardia altere a tela, mas não garante a interrupção de processamento ou cobrança já iniciados no serviço. A mídia e as transcrições não baixadas ficam apenas na janela atual; ao fechá-la, esse estado se perde.
 
 ---
 
@@ -76,8 +100,13 @@ A transcrição usa a [API do Deepgram](https://deepgram.com) — plano gratuito
 ```
 screen-recorder/
 ├── src/
-│   ├── recorder.js          # lógica principal: captura, áudio, transcrição, download
-│   ├── background.js        # service worker — único contexto que pode chamar desktopCapture
+│   ├── recorder.js          # captura e interface da janela
+│   ├── post-transcription-session.js  # tentativa, cancelamento e resultado em memória
+│   ├── post-transcription-audio.js    # cópia da faixa de áudio
+│   ├── post-transcription-client.js   # preparação e chamada do provedor
+│   ├── post-transcription-providers/elevenlabs.js
+│   ├── subtitles.js         # SRT
+│   ├── background.js        # service worker
 │   ├── popup.js             # abre a janela do gravador (ou restaura se já aberta)
 │   ├── audio-processor.js   # AudioWorkletProcessor — coleta PCM para o Deepgram
 │   └── utils/
@@ -103,19 +132,19 @@ Clique no ícone
       ↓
   recorder.html carrega
       ↓
-  "request-desktop-capture" → background.js
+  navigator.mediaDevices.getDisplayMedia() → seletor do Chrome
       ↓
-  chrome.desktopCapture.chooseDesktopMedia() → streamId
-      ↓
-  getUserMedia (chromeMediaSource: desktop)
+  getUserMedia() opcional para microfone
       ↓
   Web Audio API — mix de sistema + microfone
       ↓
   ┌─────────────────────┬──────────────────────────┐
   │   MediaRecorder     │   AudioWorklet (PCM)      │
-  │   → chunks[]        │   → WebSocket Deepgram    │
-  │   → .webm / .mp3    │   → .txt / .srt           │
+  │   → onstop/Blob     │   → WebSocket Deepgram    │
+  │   → .webm / .mp3    │   → texto ao vivo         │
   └─────────────────────┴──────────────────────────┘
+      ↓ após clique explícito
+  Mediabunny copia somente áudio → ElevenLabs Scribe v2 → TXT/SRT
 ```
 
 ---
@@ -129,27 +158,27 @@ Clique no ícone
 | Bitrate vídeo | 5 Mbps |
 | Bitrate áudio | 128 kbps |
 | Resolução máxima | 1920 × 1080 @ 30fps |
-| Transcrição | Deepgram nova-2, ~300ms latência |
-| Áudio enviado | PCM linear16, mono, 16kHz |
-| Armazenamento | `chrome.storage.local` (API key) |
+| Transcrição ao vivo | Deepgram nova-2 |
+| Transcrição posterior | ElevenLabs Scribe v2; áudio WebM/MP3 ou M4A extraído localmente |
+| Armazenamento | `chrome.storage.local` (chaves separadas Deepgram e ElevenLabs); mídia e resultados só na memória da janela |
 
 ### Permissões
 
 | Permissão | Uso |
 |-----------|-----|
-| `desktopCapture` | seletor nativo para capturar tela/aba/janela |
 | `tabs` | detectar se a janela do gravador já está aberta |
 | `activeTab` | contexto da aba ativa |
 | `windows` | abrir como popup e controlar minimizar/restaurar |
-| `storage` | salvar a API key do Deepgram localmente |
+| `storage` | salvar as chaves Deepgram e ElevenLabs localmente |
+| Hosts Deepgram e ElevenLabs | áudio ao vivo e áudio posterior, respectivamente |
 
 ---
 
 ## Limitações
 
-- **Só Chrome** — `desktopCapture` não está disponível em outros navegadores
-- **Transcrição requer internet** durante a gravação (áudio é enviado ao Deepgram)
-- **Um único fluxo de texto** — o Deepgram não separa vozes; o SRT reflete os segmentos finais sem diarização
+- **Só Chrome** — a extensão usa Manifest V3 e APIs de captura do navegador
+- **Transcrição requer internet** — Deepgram no fluxo ao vivo e ElevenLabs no posterior
+- A extensão não identifica falantes nem mantém histórico; salve os arquivos que deseja conservar.
 - Para converter o WebM para MP4:
   ```bash
   ffmpeg -i gravacao.webm -c:v libx264 -c:a aac gravacao.mp4
