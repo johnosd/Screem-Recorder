@@ -135,3 +135,30 @@ test('falha ao criar o primeiro recorder sobe para quem chamou start() e iniciar
   instance.start();
   expect(() => instance.start()).toThrow();
 });
+
+test('recorder encerrado pelo próprio navegador: o último pedaço chegando depois do stop() não se perde', async () => {
+  const factory = fakeRecorders();
+  const { instance } = build(factory, { limitBytes: 1000 });
+  instance.start();
+  const recorder = factory.created[0];
+  recorder.emit(40);
+  // O navegador encerra o recorder (faixas terminaram): estado inativo agora, pedaço final e onstop depois.
+  recorder.state = 'inactive';
+  const stopping = instance.stop();
+  await new Promise(resolve => setTimeout(resolve, 10));
+  recorder.ondataavailable({ data: new Blob([new Uint8Array(25)]) });
+  recorder.onstop();
+  const result = await stopping;
+  expect(result.parts.map(part => part.blob.size)).toEqual([65]);
+});
+
+test('se o onstop nunca chega, stop() não trava e entrega o que já recebeu', async () => {
+  const factory = fakeRecorders();
+  const { instance } = build(factory, { limitBytes: 1000, stopTimeoutMs: 30 });
+  instance.start();
+  const recorder = factory.created[0];
+  recorder.emit(40);
+  recorder.stop = function () { this.state = 'inactive'; };   // nunca dispara onstop
+  const result = await instance.stop();
+  expect(result.parts.map(part => part.blob.size)).toEqual([40]);
+});

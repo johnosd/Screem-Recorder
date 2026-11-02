@@ -211,6 +211,31 @@
     .rbtn:hover { color: var(--text); background: var(--bg4); }
 
     /* Done card */
+    .part-indicator {
+      display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--bg3); color: var(--text2);
+      font-size: 11px; font-weight: 600;
+    }
+    .parts-block {
+      margin: 0 24px 16px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+    }
+    .parts-hdr { padding: 10px 14px; font-size: 12px; font-weight: 700; color: var(--text2); }
+    .part-item {
+      display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+      border-top: 1px solid var(--border);
+    }
+    .part-item.selected { background: var(--bg4); }
+    .part-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .part-name { font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .part-meta { font-size: 11px; color: var(--text3); }
+    .part-actions { display: flex; gap: 6px; }
+    .part-btn {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: transparent;
+      color: var(--text2); font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .part-btn:hover:not(:disabled) { background: var(--bg4); color: var(--text); }
+    .part-btn:disabled { opacity: 0.5; cursor: default; }
     .done-card {
       background: var(--bg3); border: 1px solid var(--border);
       border-radius: var(--r); padding: 16px 18px; margin: 0 24px 16px;
@@ -462,6 +487,7 @@
       <div class="timer-area">
         <div id="timer" class="timer rec">00:00</div>
         <div id="st" class="status rec"><span class="dot"></span>Gravando</div>
+        <div id="part-indicator" class="part-indicator hidden" role="status"></div>
         <div id="wave" class="wave">
           <div class="wb"></div><div class="wb"></div><div class="wb"></div>
           <div class="wb"></div><div class="wb"></div><div class="wb"></div>
@@ -496,6 +522,10 @@
       <div class="done-card">
         <h3 id="done-label">Vídeo + Áudio</h3>
         <p id="done-dur">Duração: --:--</p>
+      </div>
+      <div id="parts-block" class="parts-block hidden">
+        <div class="parts-hdr">Partes da gravação</div>
+        <div id="parts-list"></div>
       </div>
       <div id="transcript-done-block" class="transcript-done-block hidden">
         <div class="transcript-done-hdr">Transcrição</div>

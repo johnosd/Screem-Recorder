@@ -138,9 +138,9 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Área | Estado |
 | --- | --- |
-| Fase 1 e 2 | Concluídas: módulos de divisão, nomes, guarda por parte e duração; 5 contratos verdes. |
-| Fase 3 (US1) | Não iniciada: ligação em `recorder.js`. |
-| Fases 4, 5 e Polish | Não iniciadas. |
+| Fases 1 a 3 | Concluídas: módulos, integração em `recorder.js`, divisão real em e2e com durações, pausa, `ended` e parada logo após troca. |
+| Fase 4 (US2) | Não iniciada: Baixar todas, transcrição por parte, bloco ao vivo. |
+| Fases 5 e Polish | Não iniciadas. |
 
 ## Riscos e Decisões
 
@@ -162,14 +162,15 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 | Data | Fase/Story | Resumo | Pendência Principal |
 | --- | --- | --- | --- |
 | 2026-11-02 | Fases 1 e 2 | Baseline registrado; `split-recorder`, `recording-parts`, `recovery-store` por parte e `webm-duration` implementados; 5/5 contratos verdes, Jest 127. | Integração em `recorder.js` (Fase 3). |
+| 2026-11-02 | Fase 3 (US1) | Gravador em partes integrado: indicador de parte, lista com Baixar, fila de remux, caminho de uma parte idêntico; 7 e2e novos; fechamento do recorder esperando o onstop (descoberta). | Baixar todas, transcrição por parte e bloco ao vivo (Fase 4). |
 
-**PRÓXIMO**: Fase 3 (US1): ligar o gravador em partes em `recorder.js` e `recorder.html`.
+**PRÓXIMO**: Fase 4 (US2): Baixar todas, sessão por parte, bloco ao vivo.
 
 ## Arquivos Principais
 
-- `src/split-recorder.js`, `src/recording-parts.js`, `src/webm-duration.js`, `src/recovery-store.js`
 - `src/recorder.js`, `recorder.html`
-- `tests/unit/split-recording.contract.test.js` (travado)
+- `src/split-recorder.js`
+- `tests/e2e/parts.spec.cjs`
 - `sdd/specs/003-dividir-gravacoes-longas/logic/parts-ui.md`
 
 ## Cuidados para Retomada
@@ -178,3 +179,5 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 - Não edite contratos nem as travas das features 001 e 002.
 - A medição de lacuna do `research.md` usou captura simulada; não a trate como prova no Chrome real.
 - `split-recorder` chama `onPartClosed` com `{ index, blob }` já com o `type` dos pedaços; o remux e a duração acontecem em `recorder.js` (fila serial).
+- `doStop` é assíncrono: as faixas só param depois de `splitRecorder.stop()` resolver (o último pedaço pode chegar depois de o recorder ficar `inactive`). Em gravações de várias partes `#post-panel` fica escondido até a Fase 4.
+- No e2e, esperar `#part-indicator` mostrar "Parte N" é mais estável que contar segundos: a captura falsa varia de 60 a 150 KB/s.

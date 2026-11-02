@@ -8,6 +8,9 @@ import { floatToInt16 } from './mp3-encode.js';
 import { createUnloadGuard } from './unload-guard.js';
 import { finalizeWebm } from './webm-finalize.js';
 import { openRecoveryStore } from './recovery-store.js';
+import { createSplitRecorder } from './split-recorder.js';
+import { partFileName, resolvePartLimit } from './recording-parts.js';
+import { readDuration } from './webm-duration.js';
 import { DEFAULT_QUALITY, QUALITY_PRESETS, buildDisplayConstraints, buildRecorderOptions,
   pickMimeType, resolveQuality } from './recording-profile.js';
 import { buildSrt, groupCaptionSegments, validSegments, validSrt } from './subtitles.js';
@@ -18,8 +21,9 @@ import { buildSrt, groupCaptionSegments, validSegments, validSrt } from './subti
 
 // ---- State ----
 let mode = 'video';
-let mediaRecorder = null;
-let chunks = [];
+let splitRecorder = null;
+let parts = [];
+let finalizeQueue = Promise.resolve();
 let captureStream = null;
 let micStream = null;
 let audioCtx = null;
@@ -152,6 +156,7 @@ function renderPostState(state) {
 }
 
 function resetPostSession() {
+  $('post-panel').classList.remove('hidden');
   postSession?.cancel();
   postSession = createPostTranscriptionSession({
     transcribe: async ({ media, language, provider, signal, onStage }) =>
@@ -310,58 +315,22 @@ btnStart.addEventListener('click', async () => {
     }
     $('recovery').classList.add('hidden');
 
-    chunks = [];
     recordedBlob = null;
     stopping = false;
     wasPaused = false;
-    mediaRecorder = new MediaRecorder(finalStream, buildRecorderOptions(mode, mime, quality));
-    const recorderForSession = mediaRecorder;
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        chunks.push(e.data);
-        recovery?.appendChunk(e.data).catch(error => log('Cópia de segurança falhou: ' + error.message));
-      }
-    };
-
-    mediaRecorder.onstop = async () => {
-      if (mediaRecorder !== recorderForSession) return;
-      const totalBytes = chunks.reduce((s, c) => s + c.size, 0);
-      log(`Recorder stopped. ${chunks.length} chunks, ${(totalBytes/1024/1024).toFixed(2)} MB`);
-      if (!totalBytes) {
-        markSaved();
-        doneSub.textContent = 'Gravação vazia. Tente novamente.';
-        return;
-      }
-      doneSub.textContent = 'Finalizando arquivo...';
-      const rawBlob = new Blob(chunks, { type: mode === 'video' ? 'video/webm' : 'audio/webm' });
-      // Regrava o contêiner (sem recodificar) para o arquivo ter duração e permitir seek.
-      const finalBlob = await finalizeWebm(rawBlob);
-      if (mediaRecorder !== recorderForSession) return;
-      if (finalBlob === rawBlob) log('WebM mantido como gravado (remux indisponível)');
-      recordedBlob = finalBlob;
-      postSession.setSource({ blob: recordedBlob, name: `${recordingFilename}.webm`,
-        origin: 'recorded', kind: mode });
-      doneSub.textContent = 'Arquivo .webm pronto';
-      btnDl.disabled = false;
-      btnDlMp3.disabled = false;
-      // Aguarda o Deepgram entregar os últimos resultados antes de fixar o texto ao vivo.
-      await transcriptClosing;
-      if (mediaRecorder !== recorderForSession) return;
-      if (transcriptFull.trim()) {
-        try {
-          postSession.setExistingTranscript({ text: transcriptFull.trim(), segments: transcriptSegments,
-            language: transcriptLang, origin: 'live' });
-        } catch (error) {
-          log('Transcrição ao vivo não aplicada: ' + error.message);
-        }
-      }
-    };
-
-    mediaRecorder.onerror = (e) => {
-      log('Recorder error: ' + (e.error?.message || e));
-      showErr('Erro no MediaRecorder');
-    };
+    parts = [];
+    finalizeQueue = Promise.resolve();
+    $('part-indicator').classList.add('hidden');
+    splitRecorder = createSplitRecorder({
+      createRecorder: () => new MediaRecorder(finalStream, buildRecorderOptions(mode, mime, quality)),
+      limitBytes: resolvePartLimit(location.search),
+      timeslice: 1000,
+      mimeType: mode === 'video' ? 'video/webm' : 'audio/webm',
+      onChunk: ({ part, blob }) => recovery?.appendChunk(blob, part)
+        .catch(error => log('Cópia de segurança falhou: ' + error.message)),
+      onPartClosed: handlePartClosed,
+      onError: handleSplitError
+    });
 
     // If user stops sharing via Chrome native button (a faixa de vídeo existe em ambos os modos)
     captureStream.getVideoTracks().forEach(t => {
@@ -371,7 +340,7 @@ btnStart.addEventListener('click', async () => {
       });
     });
 
-    mediaRecorder.start(1000);
+    splitRecorder.start();
     log('✅ Recording started!');
     if (transcriptEnabled) startTranscription(finalStream);
 
@@ -400,6 +369,7 @@ btnStart.addEventListener('click', async () => {
     } else {
       log('❌ Start failed: ' + err.message);
       showErr(err.message);
+      splitRecorder = null;
       cleanup();
     }
     chrome.windows.getCurrent(win => {
@@ -417,9 +387,9 @@ function resetStart() {
 
 // ---- PAUSE / RESUME ----
 btnPause.addEventListener('click', () => {
-  if (!mediaRecorder) return;
+  if (!splitRecorder) return;
   if (!paused) {
-    mediaRecorder.pause();
+    splitRecorder.pause();
     paused = true;
     wasPaused = true;
     pauseStart = Date.now();
@@ -431,7 +401,7 @@ btnPause.addEventListener('click', () => {
     setRecUI('pau');
     log('Paused');
   } else {
-    mediaRecorder.resume();
+    splitRecorder.resume();
     paused = false;
     transcriptPaused = false;
     stopKeepAlive?.(); stopKeepAlive = null;
@@ -457,19 +427,16 @@ function setRecUI(s) {
 // ---- STOP ----
 btnStop.addEventListener('click', () => doStop());
 
-function doStop() {
-  if (stopping || !mediaRecorder) return;
+async function doStop() {
+  if (stopping || !splitRecorder) return;
   stopping = true;
+  const recorder = splitRecorder;
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (pauseStart) { pausedMs += Date.now() - pauseStart; pauseStart = null; }
   finalDur = fmt(Date.now() - startTime - pausedMs);
 
-  if (mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-  }
   transcriptClosing = stopTranscription();
   unsavedRecording = true;
-  cleanup();
 
   chrome.windows.getCurrent(win => {
     chrome.windows.update(win.id, { state: 'normal', focused: true });
@@ -486,8 +453,142 @@ function doStop() {
   btnDl.style.display = '';
   btnDiscard.textContent = 'Descartar';
   btnDlMp3.style.display = mode === 'audio' ? '' : 'none';
+  $('parts-block').classList.add('hidden');
   view('done');
   log('Stopped. Duration: ' + finalDur);
+
+  // As faixas só param depois de o último pedaço ser entregue: parar antes poderia perdê-lo.
+  try {
+    const { error } = await recorder.stop();
+    cleanup();
+    await finalizeQueue;
+    if (splitRecorder !== recorder) return;   // descartada enquanto finalizava
+    await completeRecording(recorder, error);
+  } catch (failure) {
+    cleanup();
+    log('❌ Falha ao finalizar a gravação: ' + failure.message);
+    doneSub.textContent = 'Falha ao finalizar a gravação: ' + failure.message;
+  }
+}
+
+// ---- PARTES ----
+function handlePartClosed(part) {
+  log(`Parte ${part.index} fechada: ${(part.blob.size / 1024 / 1024).toFixed(2)} MB`);
+  enqueueFinalize(part);
+  if (!stopping) {
+    $('part-indicator').textContent = `Parte ${part.index + 1}`;
+    $('part-indicator').classList.remove('hidden');
+  }
+}
+
+// Remux e duração, uma parte por vez, para não somar a memória de dois remuxes (DI-006).
+function enqueueFinalize(part) {
+  const entry = { index: part.index, name: '', blob: part.blob, size: part.blob.size,
+    durationSec: null, downloaded: false };
+  parts.push(entry);
+  finalizeQueue = finalizeQueue.then(async () => {
+    const finalBlob = await finalizeWebm(part.blob);
+    if (finalBlob === part.blob) log(`Parte ${part.index}: WebM mantido como gravado (remux indisponível)`);
+    entry.blob = finalBlob;
+    entry.size = finalBlob.size;
+    entry.durationSec = await readDuration(finalBlob);
+  }).catch(error => log(`Parte ${part.index}: falha ao finalizar (${error.message})`));
+}
+
+function handleSplitError(error) {
+  log('❌ Falha ao abrir a próxima parte: ' + error.message);
+  showErr('Não foi possível continuar a gravação: ' + error.message);
+  doStop();
+}
+
+function formatPartDuration(seconds) {
+  return Number.isFinite(seconds) ? fmt(seconds * 1000) : '--:--';
+}
+
+function renderPartsList() {
+  const list = $('parts-list');
+  list.textContent = '';
+  for (const part of parts) {
+    const item = document.createElement('div');
+    item.className = 'part-item';
+    item.dataset.part = String(part.index);
+    const info = document.createElement('div');
+    info.className = 'part-info';
+    const name = document.createElement('span');
+    name.className = 'part-name';
+    name.textContent = part.name;
+    const meta = document.createElement('span');
+    meta.className = 'part-meta';
+    meta.textContent = `${formatPartDuration(part.durationSec)} · ${(part.size / 1024 / 1024).toFixed(1)} MB` +
+      (part.downloaded ? ' · baixada' : '');
+    info.append(name, meta);
+    const actions = document.createElement('div');
+    actions.className = 'part-actions';
+    const download = document.createElement('button');
+    download.className = 'part-btn';
+    download.dataset.act = 'dl';
+    download.textContent = 'Baixar';
+    actions.append(download);
+    item.append(info, actions);
+    list.append(item);
+  }
+}
+
+function downloadPart(index) {
+  const part = parts.find(entry => entry.index === index);
+  if (!part) return;
+  downloadBlob(part.blob, part.name);
+  part.downloaded = true;
+  unsavedRecording = parts.some(entry => !entry.downloaded);
+  recovery?.markPartDownloaded(part.index)
+    .catch(error => log('Falha ao limpar cópia de segurança: ' + error.message));
+  log(`Download: ${part.name} (${(part.size / 1024 / 1024).toFixed(2)} MB)`);
+  renderPartsList();
+}
+
+$('parts-list').addEventListener('click', event => {
+  const button = event.target.closest('button[data-act]');
+  if (!button) return;
+  const index = Number(button.closest('.part-item').dataset.part);
+  if (button.dataset.act === 'dl') downloadPart(index);
+});
+
+// Fim da gravação: uma parte segue o caminho de sempre (DI-004); várias viram a lista de partes.
+async function completeRecording(recorder, error) {
+  log(`Gravação encerrada: ${parts.length} parte(s)`);
+  if (error) log('Gravação interrompida: ' + error.message);
+  if (parts.length === 0) {
+    markSaved();
+    doneSub.textContent = error ? `Gravação interrompida: ${error.message}` : 'Gravação vazia. Tente novamente.';
+    return;
+  }
+  parts.forEach(part => { part.name = partFileName(recordingFilename, part.index, parts.length); });
+  if (parts.length > 1) {
+    btnDl.style.display = 'none';
+    btnDlMp3.style.display = 'none';
+    $('post-panel').classList.add('hidden');
+    renderPartsList();
+    $('parts-block').classList.remove('hidden');
+    doneSub.textContent = error ? `${parts.length} partes (interrompida: ${error.message})` : `${parts.length} partes prontas`;
+    return;
+  }
+  recordedBlob = parts[0].blob;
+  postSession.setSource({ blob: recordedBlob, name: `${recordingFilename}.webm`,
+    origin: 'recorded', kind: mode });
+  doneSub.textContent = error ? `Arquivo .webm pronto (interrompida: ${error.message})` : 'Arquivo .webm pronto';
+  btnDl.disabled = false;
+  btnDlMp3.disabled = false;
+  // Aguarda o Deepgram entregar os últimos resultados antes de fixar o texto ao vivo.
+  await transcriptClosing;
+  if (splitRecorder !== recorder) return;
+  if (transcriptFull.trim()) {
+    try {
+      postSession.setExistingTranscript({ text: transcriptFull.trim(), segments: transcriptSegments,
+        language: transcriptLang, origin: 'live' });
+    } catch (liveError) {
+      log('Transcrição ao vivo não aplicada: ' + liveError.message);
+    }
+  }
 }
 
 // ---- DOWNLOAD ----
@@ -551,9 +652,10 @@ btnDlMp3.addEventListener('click', async () => {
 
 // ---- DISCARD ----
 btnDiscard.addEventListener('click', () => {
-  chunks = [];
   recordedBlob = null;
-  mediaRecorder = null;
+  splitRecorder = null;
+  parts = [];
+  $('parts-block').classList.add('hidden');
   markSaved();
   resetPostSession();
   $('import-file').value = '';
@@ -868,8 +970,8 @@ async function restoreRecording({ meta, blob }) {
   try {
     const finalBlob = await finalizeWebm(blob);
     mode = meta.mode === 'audio' ? 'audio' : 'video';
-    chunks = [];
-    mediaRecorder = null;
+    splitRecorder = null;
+    parts = [];
     stopping = false;
     wasPaused = false;
     recordedBlob = finalBlob;
@@ -898,7 +1000,7 @@ async function restoreRecording({ meta, blob }) {
 
 // ---- Exit guard ----
 createUnloadGuard(window, () =>
-  (mediaRecorder && mediaRecorder.state !== 'inactive') || unsavedRecording);
+  (splitRecorder && splitRecorder.state !== 'inactive') || unsavedRecording);
 
 // ---- Init ----
 getApiKey().then(k => {

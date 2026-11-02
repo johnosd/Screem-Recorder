@@ -86,15 +86,15 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 ### Implementation
 
-- [ ] T009 [US1] Em `src/recorder.js`, trocar o `MediaRecorder` único por `createSplitRecorder` (início, `limitBytes: resolvePartLimit(location.search)`, pausa/retomada, `doStop`, evento `ended`, guarda de saída), removendo as variáveis `mediaRecorder` e `chunks`; ver `logic/parts-ui.md`.
-- [ ] T010 [US1] Em `src/recorder.js`: fila serial de remux por parte (`finalizeWebm`), duração por `readDuration`, `handleSplitError` (mensagem e preservação das partes) e os dois caminhos de `doStop`: uma parte idêntica a hoje (DI-004) e duas ou mais partes com `parts[]`.
-- [ ] T011 [US1] Em `recorder.html`/`src/recorder.js`: `#part-indicator` na tela de gravação (visível só da parte 2 em diante) e `#parts-block`/`#parts-list` na tela final com nome, duração, tamanho e **Baixar** por parte (marca baixada, `recovery.markPartDownloaded`, `markSaved()` quando todas), escondendo `#btn-dl`/`#btn-dl-mp3` quando há várias partes.
-- [ ] T012 [US1] Em `src/recorder.js`, ligar `onChunk` a `recovery.appendChunk(blob, part)` e manter `startSession` por gravação; falha ao guardar encerra com mensagem (FR-011).
+- [X] T009 [US1] Em `src/recorder.js`, trocar o `MediaRecorder` único por `createSplitRecorder` (início, `limitBytes: resolvePartLimit(location.search)`, pausa/retomada, `doStop`, evento `ended`, guarda de saída), removendo as variáveis `mediaRecorder` e `chunks`; ver `logic/parts-ui.md`.
+- [X] T010 [US1] Em `src/recorder.js`: fila serial de remux por parte (`finalizeWebm`), duração por `readDuration`, `handleSplitError` (mensagem e preservação das partes) e os dois caminhos de `doStop`: uma parte idêntica a hoje (DI-004) e duas ou mais partes com `parts[]`.
+- [X] T011 [US1] Em `recorder.html`/`src/recorder.js`: `#part-indicator` na tela de gravação (visível só da parte 2 em diante) e `#parts-block`/`#parts-list` na tela final com nome, duração, tamanho e **Baixar** por parte (marca baixada, `recovery.markPartDownloaded`, `markSaved()` quando todas), escondendo `#btn-dl`/`#btn-dl-mp3` quando há várias partes.
+- [X] T012 [US1] Em `src/recorder.js`, ligar `onChunk` a `recovery.appendChunk(blob, part)` e manter `startSession` por gravação; falha ao guardar encerra com mensagem (FR-011).
 
 ### Testes da Fase
 
-- [ ] T013 [US1] `tests/e2e/parts.spec.cjs` (captura simulada, `?partLimitBytes=300000`): gravar até pelo menos 2 partes; a lista aparece com nomes `_parte-NN.webm`; cada parte baixada abre com duração e vídeo/áudio (mediabunny); soma das durações dentro de 1 s por troca do tempo gravado; cronômetro sem reinício; indicador de parte visível só com divisão.
-- [ ] T014 [US1] `tests/e2e/parts.spec.cjs`: pausa atravessando uma divisão; "Parar compartilhamento" (`ended`) logo depois de uma divisão; `Parar` imediatamente após uma divisão (parte vazia descartada); gravação curta de uma parte com tela e nome idênticos aos de hoje, sem `#parts-block`.
+- [X] T013 [US1] `tests/e2e/parts.spec.cjs` (captura simulada, `?partLimitBytes=300000`): gravar até pelo menos 2 partes; a lista aparece com nomes `_parte-NN.webm`; cada parte baixada abre com duração e vídeo/áudio (mediabunny); soma das durações dentro de 1 s por troca do tempo gravado; cronômetro sem reinício; indicador de parte visível só com divisão.
+- [X] T014 [US1] `tests/e2e/parts.spec.cjs`: pausa atravessando uma divisão; "Parar compartilhamento" (`ended`) logo depois de uma divisão; `Parar` imediatamente após uma divisão (parte vazia descartada); gravação curta de uma parte com tela e nome idênticos aos de hoje, sem `#parts-block`.
 
 **Critério de Conclusão**: contratos continuam 5/5 e as três travas íntegras; testes da fase verdes; `npm run build` sem erro; os testes e2e existentes de gravação passam sem alteração (SC-003).
 
@@ -102,11 +102,11 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T009 `recorder.js` usa `createSplitRecorder` (início com `resolvePartLimit(location.search)`, pausa/retomada, `doStop` assíncrono que só para as faixas depois do último pedaço, `ended`, guarda de saída); T010 fila serial de remux por parte, duração por `readDuration`, `handleSplitError`, `completeRecording` com o caminho de uma parte idêntico ao anterior; T011 `#part-indicator` e `#parts-block`/`#parts-list` com Baixar por parte (`recovery.markPartDownloaded`); T012 `onChunk` → `recovery.appendChunk(blob, part)`. Descoberta durante a fase (corrigida em `split-recorder.js`, com 2 testes novos): o recorder encerrado pelo próprio navegador (ex.: "Parar compartilhamento") entrega o último pedaço depois de já estar `inactive`, então `closePart` passou a registrar o `onstop` na criação, sempre esperá-lo e ter um prazo de segurança (`stopTimeoutMs`, 5 s).
+- Contrato: `npx jest tests/unit/split-recording.contract.test.js` → 5/5 verdes; trava 003 íntegra; trava 002 e 001 íntegras.
+- Testes executados: `npm test` → 129/129 (127 + 2); `npm run build` ok; `npm run test:e2e` → 52/52 (45 anteriores sem alteração + 7 em `parts.spec.cjs`). Um e2e falhou uma vez por asserção errada do próprio teste (parte final pequena aparece como `0.0 MB`) e foi corrigido no teste; passou 2 vezes seguidas depois.
+- Pendências: Lacuna real e memória com partes de 1,4 GB seguem pendentes de Chrome real (R-001, R-003, R-004). MP3 do modo áudio só existe em gravações de uma parte (R-006).
 
 ---
 
@@ -178,7 +178,7 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 ### Checklist de Release
 
 - [X] Fase 2 (módulos e contratos) concluída
-- [ ] Fase 3 (US1) concluída
+- [X] Fase 3 (US1) concluída
 - [ ] Fase 4 (US2) concluída
 - [ ] Fase 5 (US3) concluída
 - [ ] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 003, 002 e 001

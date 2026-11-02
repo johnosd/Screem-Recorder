@@ -2,8 +2,11 @@
 // MediaRecorder (o MediaStream e as faixas ficam intactos). A troca é sequencial: o recorder novo só inicia
 // depois do `onstop` do antigo, sem sobreposição. Não conhece remux, IndexedDB nem interface: tudo por callbacks.
 // Regras em sdd/specs/003-dividir-gravacoes-longas/logic/split-recorder.md.
+// Prazo máximo para o `onstop` depois de parar um recorder; evita travar se o evento nunca chegar.
+const STOP_TIMEOUT_MS = 5000;
+
 export function createSplitRecorder({ createRecorder, limitBytes, timeslice = 1000, mimeType = 'video/webm',
-  onChunk, onPartClosed, onError } = {}) {
+  onChunk, onPartClosed, onError, stopTimeoutMs = STOP_TIMEOUT_MS } = {}) {
   const limit = Number.isFinite(limitBytes) && limitBytes > 0 ? limitBytes : Infinity;
   const closedParts = [];
   let current = null;       // { index, recorder, chunks, bytes }
@@ -19,6 +22,9 @@ export function createSplitRecorder({ createRecorder, limitBytes, timeslice = 10
     const index = nextIndex++;
     const recorder = createRecorder();
     const part = { index, recorder, chunks: [], bytes: 0 };
+    // O onstop é registrado já na criação: o Chrome também encerra o recorder sozinho (ex.: ao parar o
+    // compartilhamento) e o último pedaço chega depois, então "já inativo" não significa "já terminou".
+    part.stopped = new Promise(resolve => { recorder.onstop = resolve; });
     recorder.ondataavailable = event => onData(part, event);
     recorder.start(timeslice);
     if (paused) recorder.pause?.();
@@ -35,14 +41,16 @@ export function createSplitRecorder({ createRecorder, limitBytes, timeslice = 10
     if (part === current && !rotating && !stopping && part.bytes >= limit) rotate();
   }
 
-  // Para o recorder da parte e espera o `onstop`, que vem depois do último pedaço.
-  function closePart(part) {
-    return new Promise(resolve => {
-      const finish = () => resolve(new Blob(part.chunks, { type: mimeType }));
-      part.recorder.onstop = finish;
-      if (part.recorder.state === 'inactive') finish();
-      else part.recorder.stop();
-    });
+  // Para o recorder da parte (se ainda gravando) e espera o `onstop`, que vem depois do último pedaço.
+  async function closePart(part) {
+    if (part.recorder.state !== 'inactive') {
+      try { part.recorder.stop(); } catch { /* já parando */ }
+    }
+    let timer;
+    const timeout = new Promise(resolve => { timer = setTimeout(resolve, stopTimeoutMs); });
+    await Promise.race([part.stopped, timeout]);
+    clearTimeout(timer);
+    return new Blob(part.chunks, { type: mimeType });
   }
 
   async function closeAndRecord(part) {
