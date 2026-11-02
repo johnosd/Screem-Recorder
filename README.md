@@ -9,6 +9,7 @@ Extensão Chrome (Manifest V3) para gravar tela e áudio, transcrever ao vivo e 
 - Grava **tela + áudio do sistema** (Meet, YouTube, etc.) ou **só áudio**
 - **Microfone opcional** — mixado automaticamente com o áudio do sistema
 - **Pausa / retomada** durante a gravação
+- **Gravações longas divididas em partes** automaticamente (cerca de 1,4 GB cada), sem parar de gravar: cada parte é um `.webm` completo, que você baixa e transcreve separadamente
 - **Auto-minimiza** ao iniciar e **auto-restaura** ao parar — a janela nunca aparece no que você compartilha
 - Download em **.webm** (vídeo) ou **.mp3** (áudio, via conversão local)
 - **Transcrição em tempo real** via Deepgram (~300ms de latência)
@@ -73,6 +74,17 @@ Após qualquer alteração no código, rode `npm run build` e clique em **recarr
 5. A janela minimiza automaticamente; a gravação corre em background
 6. Para pausar ou parar, clique no ícone da extensão para restaurar a janela
 7. Após parar, espere a mensagem **Arquivo .webm pronto** (aparece "Finalizando arquivo..." enquanto o contêiner é ajustado). Fechar a janela durante a gravação, ou antes de baixar o arquivo, pede confirmação. O mesmo arquivo final pode ser baixado ou transcrito.
+
+### Gravações longas: divisão em partes
+
+Quando a gravação em andamento chega a cerca de **1,4 GB**, o app fecha a parte atual e continua gravando em outra, sem perder tempo gravado (a troca leva menos de 1 s; em testes com captura simulada, cerca de 0,1 s). Na tela de gravação aparece "Parte 2", "Parte 3"… e o cronômetro segue corrido.
+
+- Duração aproximada de cada parte no pior caso (vídeo sempre no bitrate máximo do perfil): **Alta** cerca de 23 min, **Equilibrada** cerca de 36 min, **Econômica** cerca de 1,2 h. Quando a tela muda pouco o arquivo cresce mais devagar e a parte dura mais.
+- Ao parar, a tela final lista as partes com nome (`..._parte-01.webm`, `..._parte-02.webm`), duração e tamanho. Cada parte tem **Baixar** e **Transcrever**, e há **Baixar todas** (o Chrome pode pedir permissão para vários downloads).
+- Cada parte é transcrita separadamente (uma por vez), com o serviço que você escolher, e o SRT acompanha o arquivo daquela parte. Não há texto unificado das partes. A transcrição ao vivo continua contínua e aparece num bloco próprio, só com TXT.
+- Uma gravação que não chega ao limite continua exatamente como antes: um arquivo, sem lista e sem sufixo no nome.
+- No modo Só Áudio, o **MP3** só é oferecido quando a gravação tem uma parte; nas divididas, o download é `.webm`.
+- As partes ficam guardadas no navegador (IndexedDB) até você baixá-las ou descartá-las: se a janela cair, a próxima abertura oferece **Recuperar** todas as partes que ainda não foram baixadas. Gravações muito longas ocupam bastante disco enquanto não forem baixadas.
 
 ### Transcrição ao vivo (opcional)
 
@@ -174,7 +186,8 @@ Clique no ícone
 | Manifest | V3 |
 | Formato de vídeo | WebM (VP9 + Opus) |
 | Qualidade | Escolhida em ⚙ Configurações: Alta (1080p30, 8 Mbps vídeo, 160 kbps áudio), Equilibrada (padrão: 1080p30, 5 Mbps, 128 kbps) ou Econômica (720p24, 2,5 Mbps, 96 kbps) |
-| Arquivo final | Contêiner WebM regravado ao parar, sem recodificar, para ter duração e permitir avançar o vídeo (acima de 1,5 GB mantém o original) |
+| Arquivo final | Contêiner WebM regravado ao parar, sem recodificar, para ter duração e permitir avançar o vídeo (acima de 1,5 GB mantém o original; por isso cada parte fecha em 1,4 GB) |
+| Gravações longas | Divididas em partes de cerca de 1,4 GB, trocando o `MediaRecorder` sobre a mesma captura (lacuna menor que 1 s); cada parte é remuxada em fila, uma por vez |
 | Transcrição ao vivo | Deepgram nova-3 |
 | Transcrição posterior | ElevenLabs Scribe v2 (limite 5 GB) ou Deepgram Nova-3 (limite 2 GB), à escolha; áudio WebM/MP3 ou M4A extraído localmente |
 | Armazenamento | `chrome.storage.local` (chaves separadas Deepgram e ElevenLabs); resultados só na memória da janela; cópia de segurança da gravação em IndexedDB (`recorder-recovery`) até baixar ou descartar |

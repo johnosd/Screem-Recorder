@@ -460,3 +460,27 @@ test('sobrando só uma parte (a 2) a recuperação mostra a lista, sem perder o 
     await expect(page.locator('#recovery')).toBeHidden();
   });
 });
+
+// ---------- Modo Só Áudio ----------
+test('modo Só Áudio também se divide; cada parte é só áudio e não oferece MP3', async ({}, testInfo) => {
+  await record(testInfo, async ({ page, id }) => {
+    await open(page, id, 50_000);   // o áudio gera poucos KB por segundo: usa o limite mínimo permitido
+    await startRecording(page, 'audio');
+    await expect(page.locator('#part-indicator')).toHaveText('Parte 2', { timeout: 60_000 });
+    await page.waitForTimeout(1500);
+    await page.locator('#btn-stop').click();
+    await expect(page.locator('#parts-block')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('#btn-dl-mp3')).toBeHidden();
+    await expect(page.locator('#btn-dl')).toBeHidden();
+    const count = await page.locator('.part-item').count();
+    expect(count).toBeGreaterThanOrEqual(2);
+    for (let index = 1; index <= count; index++) {
+      const file = await downloadPart(page, index);
+      expect(file.name).toMatch(new RegExp(`^gravacao-audio_.*_parte-0${index}\\.webm$`));
+      const info = await inspectWebm(file.path);
+      expect(info.video).toBe(0);
+      expect(info.audio).toBe(1);
+      expect(info.duration).toBeGreaterThan(0.3);
+    }
+  });
+});

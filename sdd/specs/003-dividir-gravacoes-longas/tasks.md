@@ -171,9 +171,11 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T022 [Shared] Atualizar `README.md` (divisão em partes, tamanho aproximado por perfil, uso de disco, MP3 só em uma parte, "Baixar todas") e `CLAUDE.md` (módulos novos e o parâmetro de teste `?partLimitBytes`); linha em `.planning/backlog.md`.
-- [ ] T023 [Shared] Executar `quickstart.md`: o que depender do Chrome real, de captura nativa, de partes de 1,4 GB e de memória fica registrado como pendente em `qa-evidence.md` (criar), sem chamar de validado.
-- [ ] T024 [Shared] Busca final: nenhum `mediaRecorder`/`chunks` residual em `recorder.js`, nenhuma referência ao limite de teste fora de `resolvePartLimit`, chaves ausentes de logs e testes.
+- [X] T022 [Shared] Atualizar `README.md` (divisão em partes, tamanho aproximado por perfil, uso de disco, MP3 só em uma parte, "Baixar todas") e `CLAUDE.md` (módulos novos e o parâmetro de teste `?partLimitBytes`); linha em `.planning/backlog.md`.
+- [X] T023 [Shared] Executar `quickstart.md`: o que depender do Chrome real, de captura nativa, de partes de 1,4 GB e de memória fica registrado como pendente em `qa-evidence.md` (criar), sem chamar de validado.
+- [X] T024 [Shared] Busca final: nenhum `mediaRecorder`/`chunks` residual em `recorder.js`, nenhuma referência ao limite de teste fora de `resolvePartLimit`, chaves ausentes de logs e testes.
+
+- [X] T025 [US1] (descoberta durante o QA do Polish) e2e do modo Só Áudio com divisão em `tests/e2e/parts.spec.cjs`: cada parte só áudio, sem MP3, nomes `gravacao-audio_…_parte-NN.webm`.
 
 ### Checklist de Release
 
@@ -181,11 +183,13 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 - [X] Fase 3 (US1) concluída
 - [X] Fase 4 (US2) concluída
 - [X] Fase 5 (US3) concluída
-- [ ] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 003, 002 e 001
-- [ ] `npm test` e `npm run test:e2e` executados e registrados; contagens anteriores preservadas (SC-003)
-- [ ] `npm run build` sem erro, sem editar `dist/`
-- [ ] Lacuna real, memória e disco com partes de 1,4 GB e "Baixar todas" no Chrome real verificados, ou pendências declaradas
-- [ ] `quickstart.md` executado
+- [X] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 003, 002 e 001
+- [X] `npm test` e `npm run test:e2e` executados e registrados; contagens anteriores preservadas (SC-003)
+- [X] `npm run build` sem erro, sem editar `dist/`
+- [X] Lacuna real, memória e disco com partes de 1,4 GB e "Baixar todas" no Chrome real verificados, ou pendências declaradas
+- [X] `quickstart.md` executado
+
+> **Nota (2026-11-02):** a execução do `quickstart.md` cobriu as checagens automatizadas e o Chromium simulado. O Chrome real, a captura nativa, o limite de 1,4 GB de verdade, memória e disco e o aviso de vários downloads **não** foram verificados e estão declarados como pendência em `qa-evidence.md` §4 (Princípio IV). O item "…ou pendências declaradas" foi fechado por essa declaração, não por validação real.
 
 ---
 

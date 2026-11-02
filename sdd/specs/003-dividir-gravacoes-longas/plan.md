@@ -138,8 +138,11 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Área | Estado |
 | --- | --- |
-| Fases 1 a 5 | Concluídas: módulos, integração, lista de partes, Baixar todas, transcrição por parte, bloco ao vivo e recuperação de várias partes. |
-| Polish | Não iniciada: README, CLAUDE.md, QA e busca final. |
+| Fases 1 a 5 | Concluídas. |
+| Polish | Concluída: README, CLAUDE.md, e2e do modo Só Áudio, `qa-evidence.md` com a medição da lacuna. |
+| Contratos | 5/5 verdes; travas 003, 002 e 001 íntegras. |
+| Gates | `npm test` 129/129; `npm run build` ok; `npm run test:e2e` 61/61. |
+| Pendente | Chrome real, partes de 1,4 GB, memória/disco, tela estática e Baixar todas (qa-evidence §4). |
 
 ## Riscos e Decisões
 
@@ -164,15 +167,16 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 | 2026-11-02 | Fase 3 (US1) | Gravador em partes integrado: indicador de parte, lista com Baixar, fila de remux, caminho de uma parte idêntico; 7 e2e novos; fechamento do recorder esperando o onstop (descoberta). | Baixar todas, transcrição por parte e bloco ao vivo (Fase 4). |
 | 2026-11-02 | Fase 4 (US2) | Baixar todas, sessão por parte, bloco ao vivo, nomes de TXT/SRT com a parte; 4 e2e novos. | Recuperação de várias partes (Fase 5). |
 | 2026-11-02 | Fase 5 (US3) | Recuperação de várias partes com numeração preservada; 4 e2e novos; 60 e2e no total. | Documentação e QA no Polish. |
+| 2026-11-02 | Polish | README e CLAUDE.md atualizados; e2e do modo Só Áudio (descoberto no QA); QA com a medição da lacuna (0,03 s por troca). | Validação real no Chrome. |
 
-**PRÓXIMO**: Polish: README, CLAUDE.md, qa-evidence, quickstart e busca final.
+**PRÓXIMO**: Rodar `sdd-converge`; depois executar o roteiro manual do `quickstart.md` no Chrome real.
 
 ## Arquivos Principais
 
-- `src/recorder.js` (`offerRecovery`, `restoreRecording`)
-- `src/recovery-store.js`
-- `tests/e2e/parts.spec.cjs`
-- `README.md`, `CLAUDE.md`
+- `sdd/specs/003-dividir-gravacoes-longas/qa-evidence.md`
+- `src/split-recorder.js`, `src/recording-parts.js`, `src/recovery-store.js`
+- `src/recorder.js`, `recorder.html`
+- `tests/unit/split-recording.contract.test.js` (travado)
 
 ## Cuidados para Retomada
 
