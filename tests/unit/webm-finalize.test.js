@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Output,
   WebMOutputFormat } from 'mediabunny';
-import { finalizeWebm } from './webm-finalize.js';
+import { finalizeWebm } from '../../src/webm-finalize.js';
 
-const source = () => new Blob([readFileSync(join(__dirname, 'fixtures', 'video-audio.webm'))],
+const source = () => new Blob([readFileSync(join(__dirname, '..', 'fixtures', 'video-audio.webm'))],
   { type: 'video/webm' });
 const open = blob => new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
 

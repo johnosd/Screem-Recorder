@@ -1,4 +1,4 @@
-import { buildSrt, groupCaptionSegments, recoverTimedSegments, validSrt } from './subtitles.js';
+import { buildSrt, groupCaptionSegments, recoverTimedSegments, validSrt } from '../../src/subtitles.js';
 
 test('agrupa palavras em legendas por frase e pausa sem alterar os tempos extremos', () => {
   const words = [

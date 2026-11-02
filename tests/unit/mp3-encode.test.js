@@ -1,4 +1,4 @@
-import { encodePcmToMp3, floatToInt16 } from './mp3-encode.js';
+import { encodePcmToMp3, floatToInt16 } from '../../src/mp3-encode.js';
 
 test('floatToInt16 satura em ±1 e escala para 16 bits', () => {
   expect(Array.from(floatToInt16([0, 1, -1, 2, -2, 0.5]))).toEqual([0, 32767, -32768, 32767, -32768, 16383]);

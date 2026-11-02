@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 const path = require('node:path');
 const { root, apiUrl, saveElevenLabsKey, withExtension } = require('./helpers.cjs');
 
-const fixture = name => path.join(root, 'src/fixtures', name);
+const fixture = name => path.join(root, 'tests/fixtures', name);
 
 test('sem chave ElevenLabs orienta o usuário e não envia nada', async ({}, testInfo) => {
   await withExtension(testInfo, async ({ context, page }) => {

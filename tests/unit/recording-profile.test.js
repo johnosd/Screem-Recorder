@@ -1,5 +1,5 @@
 import { DEFAULT_QUALITY, QUALITY_PRESETS, buildDisplayConstraints, buildRecorderOptions,
-  pickMimeType, resolveQuality } from './recording-profile.js';
+  pickMimeType, resolveQuality } from '../../src/recording-profile.js';
 
 test('qualidade desconhecida ou ausente cai no perfil equilibrado', () => {
   expect(resolveQuality(undefined)).toBe(DEFAULT_QUALITY);

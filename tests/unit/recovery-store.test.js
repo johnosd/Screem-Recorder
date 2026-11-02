@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { openRecoveryStore } from './recovery-store.js';
+import { openRecoveryStore } from '../../src/recovery-store.js';
 
 const text = blob => blob.text();
 let store;

@@ -1,4 +1,4 @@
-import { downloadBlob, timestamp } from './download.js';
+import { downloadBlob, timestamp } from '../../../src/utils/download.js';
 
 test('timestamp gera texto seguro para nome de arquivo', () => {
   expect(timestamp(new Date('2026-11-02T14:39:05.123Z'))).toBe('2026-11-02T14-39-05');

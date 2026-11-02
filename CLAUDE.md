@@ -13,10 +13,10 @@ npm install
 npm test
 npm run build
 npm run build:prod   # bundle minificado, sem source maps
-npm run test:e2e     # Playwright com a extensão carregada no Chromium (e2e/capture.spec.cjs simula captura com flags do Chromium)
+npm run test:e2e     # Playwright com a extensão carregada no Chromium (tests/e2e/capture.spec.cjs simula captura com flags do Chromium)
 ```
 
-O projeto tem testes Jest e comandos de teste e build no `package.json`. Não há script de lint nem de type-check declarado. Não edite `dist/` manualmente.
+Os testes ficam em `tests/` (`unit`, `e2e`, `integration`, `fixtures`); `src/` só tem código da extensão. O projeto tem testes Jest e comandos de teste e build no `package.json`. Não há script de lint nem de type-check declarado. Não edite `dist/` manualmente.
 
 Para verificar comportamento no Chrome, rode o build, carregue a raiz deste repositório em `chrome://extensions/` como extensão sem compactação e recarregue a extensão após mudanças. Testes Jest e build não substituem a verificação dos fluxos de captura, permissões, áudio e transcrição no Chrome.
 

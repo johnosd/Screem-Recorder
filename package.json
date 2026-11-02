@@ -11,10 +11,10 @@
     "dev": "webpack --watch",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:e2e:install": "node e2e/run.mjs install chromium",
-    "test:e2e": "npm run build && node e2e/run.mjs test",
-    "test:elevenlabs:live": "node --experimental-default-type=module --test integration/elevenlabs-live.test.mjs",
-    "test:elevenlabs:auth": "node --experimental-default-type=module integration/elevenlabs-live.test.mjs --auth-only"
+    "test:e2e:install": "node tests/e2e/run.mjs install chromium",
+    "test:e2e": "npm run build && node tests/e2e/run.mjs test",
+    "test:elevenlabs:live": "node --experimental-default-type=module --test tests/integration/elevenlabs-live.test.mjs",
+    "test:elevenlabs:auth": "node --experimental-default-type=module tests/integration/elevenlabs-live.test.mjs --auth-only"
   },
   "repository": {
     "type": "git",
@@ -42,10 +42,13 @@
     "mediabunny": "^1.63.0"
   },
   "jest": {
+    "testMatch": [
+      "<rootDir>/tests/unit/**/*.test.js"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/e2e/",
-      "/integration/"
+      "/tests/e2e/",
+      "/tests/integration/"
     ]
   }
 }

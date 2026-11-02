@@ -140,8 +140,10 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 
 | Área | Estado |
 | --- | --- |
-| Planejamento | Concluído em 2026-11-02; contratos escritos, vermelhos e travados. |
-| Implementação | Não iniciada. |
+| Fase 1 (baseline) | Concluída. |
+| Fase 2 (US4, `tests/`) | Concluída: testes e fixtures em `tests/`; travas 001 (novo caminho) e 002 íntegras. |
+| Fase 3 (US1) | Não iniciada; 4 contratos vermelhos esperados. |
+| Fases 4, 5 e Polish | Não iniciadas. |
 
 ## Riscos e Decisões
 
@@ -160,18 +162,21 @@ Os 5 casos falham por asserção (conferido em 2026-11-02). Stub criado pelo pla
 
 | Data | Fase/Story | Resumo | Pendência Principal |
 | --- | --- | --- | --- |
+| 2026-11-02 | Fase 1 e Fase 2 | Baseline registrado e reorganização dos testes em `tests/` concluída, com emenda R-001/R-011 aplicada (só imports) e trava da 001 regravada. | Nenhuma. |
 
-**PRÓXIMO**: Fase 1 (baseline) e Fase 2 (reorganização dos testes) — `/sdd-execute 002-escolha-provedor-transcricao`.
+**PRÓXIMO**: Fase 3 (US1): adaptador Deepgram, registro de provedores, cliente e interface.
 
 ## Arquivos Principais
 
-- `sdd/specs/002-escolha-provedor-transcricao/logic/provider-adapter.md`
 - `tests/unit/post-provider-choice.contract.test.js` (travado)
-- `src/post-transcription-client.js`, `src/post-transcription-session.js`, `src/post-transcription-providers/`
-- `src/recorder.js`, `recorder.html`
+- `src/post-transcription-providers/deepgram.js` (stub)
+- `src/post-transcription-client.js`, `src/recorder.js`, `recorder.html`
+- `sdd/specs/002-escolha-provedor-transcricao/logic/provider-adapter.md`
 
 ## Cuidados para Retomada
 
 - O contrato `tests/unit/post-provider-choice.contract.test.js` está vermelho de propósito até as Fases 3 e 4. `npm test` falha com 5 casos até lá; isso não é regressão. Use a contagem Jest 76 verdes como baseline.
 - Não edite contratos. A única mudança permitida em contrato é a emenda R-001 (linhas de `import` do contrato da 001), com a trava regravada.
 - `Object.defineProperty(media, 'size', ...)` no contrato 4 simula 3 GB sem alocar memória; o `prepareAudio` de áudio devolve `size` do próprio `Blob`.
+- `testMatch` do Jest só inclui `tests/unit/**/*.test.js`; testes novos de unidade devem ir para lá.
+- A raiz do projeto nos helpers e2e e em `run.mjs` é dois níveis acima de `tests/e2e/`.

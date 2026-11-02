@@ -1,4 +1,4 @@
-import { createPostTranscriptionSession } from './post-transcription-session.js';
+import { createPostTranscriptionSession } from '../../src/post-transcription-session.js';
 
 const media = () => new Blob(['audio'], { type: 'audio/webm' });
 const source = () => ({ blob: media(), name: 'fala.webm', origin: 'selected', kind: 'audio' });

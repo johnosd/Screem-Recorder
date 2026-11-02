@@ -34,7 +34,10 @@ npm run dev        # recompila automaticamente ao salvar
 
 ## Testes automatizados no navegador
 
+Todos os testes ficam em `tests/`: `tests/unit` (Jest, espelhando `src/`), `tests/e2e` (Playwright), `tests/integration` (teste real da ElevenLabs) e `tests/fixtures` (mídias de teste).
+
 ```bash
+npm test                  # Jest (tests/unit)
 npm run test:e2e:install  # uma vez: baixa o Chromium de testes
 npm run test:e2e          # build + Playwright com a extensão carregada
 ```
@@ -118,6 +121,11 @@ screen-recorder/
 │   ├── recovery-store.js    # cópia de segurança da gravação em IndexedDB
 │   └── utils/
 │       └── timer.js         # formata mm:ss
+├── tests/
+│   ├── unit/                # Jest; espelha src/ (inclui os testes de contrato)
+│   ├── e2e/                 # Playwright com a extensão no Chromium
+│   ├── integration/         # teste real da ElevenLabs (fora do npm test)
+│   └── fixtures/            # mídias de teste
 ├── fonts/                   # DM Sans e JetBrains Mono locais (OFL)
 ├── dist/                    # gerado pelo webpack — não editar
 ├── lib/

@@ -25,15 +25,15 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 **Purpose**: registrar o ponto de partida antes de mover qualquer arquivo.
 
-- [ ] T001 [Shared] Rodar e anotar no Registro da Fase: `npm test` (esperado: 76 verdes e 5 vermelhos do contrato novo), `npm run build`, `npm run test:e2e` (esperado: 31 verdes), `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` e `-Slug 002-escolha-provedor-transcricao` (ambos íntegros). Estas contagens são a referência de SC-006.
+- [X] T001 [Shared] Rodar e anotar no Registro da Fase: `npm test` (esperado: 76 verdes e 5 vermelhos do contrato novo), `npm run build`, `npm run test:e2e` (esperado: 31 verdes), `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` e `-Slug 002-escolha-provedor-transcricao` (ambos íntegros). Estas contagens são a referência de SC-006.
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T001, baseline antes de mover arquivos.
+- Contrato: 002: 5 contratos íntegros e vermelhos por asserção; 001: trava íntegra (5/5).
+- Testes executados: `npm test` → 76 verdes e 5 vermelhos (contratos 002); `npm run build` ok; `npm run test:e2e` → 31/31; `check-contract-tests.ps1` 001 e 002 → íntegros.
+- Pendências: Nenhuma.
 
 ---
 
@@ -43,17 +43,17 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 **⚠️ CRITICAL**: bloqueia as fases seguintes. Só mudam linhas de caminho; nenhum caso é criado, removido ou reescrito. A única edição permitida em arquivo de contrato é a emenda R-001 (linhas de `import`).
 
-- [ ] T002 [US4] Criar `tests/unit`, `tests/e2e`, `tests/integration`, `tests/fixtures` e mover `src/fixtures/*` para `tests/fixtures/` com `git mv`.
-- [ ] T003 [P] [US4] Mover com `git mv` os testes unitários de `src/` para `tests/unit/` (mesmo nome; `src/utils/*.test.js` para `tests/unit/utils/`): `deepgram-live`, `mp3-encode`, `post-transcription-audio`, `post-transcription-client`, `post-transcription-session`, `recording-profile`, `recovery-store`, `subtitles`, `unload-guard`, `webm-finalize`, `utils/download`, `utils/timer`. Ajustar os `import` para `../../src/...` e a leitura de fixtures (`__dirname` → `../fixtures`). Não tocar no contrato da 001 aqui.
-- [ ] T004 [US4] Emenda R-001: `git mv src/post-transcription.contract.test.js tests/unit/post-transcription.contract.test.js`, trocar **somente** as linhas de `import` (para `../../src/...`), conferir por `git diff` que nada mais mudou, rodar `npx jest tests/unit/post-transcription.contract.test.js` (5 verdes) e regravar a trava: `.\.planning\scripts\powershell\check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao -Write -Paths tests/unit/post-transcription.contract.test.js`, depois conferir `PASS` sem `-Write`.
-- [ ] T005 [US4] Mover `e2e/*` para `tests/e2e/` (`git mv`): ajustar `root` em `helpers.cjs` (`path.resolve(__dirname, '..', '..')`), caminhos de fixtures nos specs (`tests/fixtures`), `testDir` em `playwright.config.cjs` e o `root` de `run.mjs` (dois níveis acima).
-- [ ] T006 [P] [US4] Mover `integration/elevenlabs-live.test.mjs` para `tests/integration/` e ajustar imports relativos e caminho de fixtures, se houver.
-- [ ] T007 [US4] Atualizar `package.json`: scripts `test:e2e*` e `test:elevenlabs:*` para os novos caminhos, `jest` com `roots`/`testMatch` apontando só para `tests/unit` e `testPathIgnorePatterns` coerente (e2e e integration continuam fora do `npm test`).
-- [ ] T008 [US4] Atualizar `README.md` (árvore do projeto e comandos de teste), `CLAUDE.md` (menções a `e2e/`, `src/*.test.js`) e `.gitignore` se necessário.
+- [X] T002 [US4] Criar `tests/unit`, `tests/e2e`, `tests/integration`, `tests/fixtures` e mover `src/fixtures/*` para `tests/fixtures/` com `git mv`.
+- [X] T003 [P] [US4] Mover com `git mv` os testes unitários de `src/` para `tests/unit/` (mesmo nome; `src/utils/*.test.js` para `tests/unit/utils/`): `deepgram-live`, `mp3-encode`, `post-transcription-audio`, `post-transcription-client`, `post-transcription-session`, `recording-profile`, `recovery-store`, `subtitles`, `unload-guard`, `webm-finalize`, `utils/download`, `utils/timer`. Ajustar os `import` para `../../src/...` e a leitura de fixtures (`__dirname` → `../fixtures`). Não tocar no contrato da 001 aqui.
+- [X] T004 [US4] Emenda R-001: `git mv src/post-transcription.contract.test.js tests/unit/post-transcription.contract.test.js`, trocar **somente** as linhas de `import` (para `../../src/...`), conferir por `git diff` que nada mais mudou, rodar `npx jest tests/unit/post-transcription.contract.test.js` (5 verdes) e regravar a trava: `.\.planning\scripts\powershell\check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao -Write -Paths tests/unit/post-transcription.contract.test.js`, depois conferir `PASS` sem `-Write`.
+- [X] T005 [US4] Mover `e2e/*` para `tests/e2e/` (`git mv`): ajustar `root` em `helpers.cjs` (`path.resolve(__dirname, '..', '..')`), caminhos de fixtures nos specs (`tests/fixtures`), `testDir` em `playwright.config.cjs` e o `root` de `run.mjs` (dois níveis acima).
+- [X] T006 [P] [US4] Mover `integration/elevenlabs-live.test.mjs` para `tests/integration/` e ajustar imports relativos e caminho de fixtures, se houver.
+- [X] T007 [US4] Atualizar `package.json`: scripts `test:e2e*` e `test:elevenlabs:*` para os novos caminhos, `jest` com `roots`/`testMatch` apontando só para `tests/unit` e `testPathIgnorePatterns` coerente (e2e e integration continuam fora do `npm test`).
+- [X] T008 [US4] Atualizar `README.md` (árvore do projeto e comandos de teste), `CLAUDE.md` (menções a `e2e/`, `src/*.test.js`) e `.gitignore` se necessário.
 
 ### Testes da Fase
 
-- [ ] T009 [US4] Verificar e registrar: `npm test` com os mesmos 76 casos verdes (+5 contratos novos ainda vermelhos), `npm run build` sem erro, `npm run test:e2e` com os mesmos 31 verdes, `check-contract-tests.ps1` íntegro para 001 (novo caminho) e 002, e busca sem nenhum `*.test.*`/`*.spec.*`/fixture fora de `tests/`: `git ls-files | grep -E "\.(test|spec)\.|fixtures/" | grep -v "^tests/"` (vazio).
+- [X] T009 [US4] Verificar e registrar: `npm test` com os mesmos 76 casos verdes (+5 contratos novos ainda vermelhos), `npm run build` sem erro, `npm run test:e2e` com os mesmos 31 verdes, `check-contract-tests.ps1` íntegro para 001 (novo caminho) e 002, e busca sem nenhum `*.test.*`/`*.spec.*`/fixture fora de `tests/`: `git ls-files | grep -E "\.(test|spec)\.|fixtures/" | grep -v "^tests/"` (vazio).
 
 **Critério de Conclusão**: `npm test` → 76 verdes e 5 vermelhos esperados (os contratos 002); `npm run test:e2e` → 31/31; `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` e `-Slug 002-escolha-provedor-transcricao` → íntegros; nenhum arquivo de teste ou fixture fora de `tests/`; `dist/` sem testes. O `git diff -M` do contrato da 001 mostra só `import`.
 
@@ -61,11 +61,11 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T002 a T009: `src/fixtures` → `tests/fixtures`; 12 testes unitários e o contrato da 001 → `tests/unit` (utils em `tests/unit/utils`); `e2e/` → `tests/e2e`; `integration/` → `tests/integration`; `package.json` (scripts e `testMatch` em `tests/unit`), `playwright.config.cjs` (`testDir`), `helpers.cjs`/`run.mjs` (raiz a dois níveis), README e CLAUDE.md.
+- Contrato: `npx jest tests/unit/post-transcription.contract.test.js` → 5/5 verdes; emenda R-001/R-011: `git diff` mostrou só 2 linhas de `import`; trava da 001 regravada com `-Write -Paths tests/unit/post-transcription.contract.test.js` e conferida íntegra; trava da 002 íntegra.
+- Testes executados: `npm test` → 76 verdes + 5 contratos 002 vermelhos (igual ao baseline); `npm run build` ok; `npm run test:e2e` → 31/31; busca de `*.test.*`/`*.spec.*`/fixtures fora de `tests/` → vazia.
+- Pendências: `tests/integration/elevenlabs-live.test.mjs` teve só os caminhos ajustados e não foi executado (exige chave real e rede).
 
 ---
 
@@ -185,7 +185,7 @@ description: "Tasks da feature 002-escolha-provedor-transcricao"
 
 ### Checklist de Release
 
-- [ ] Fase 2 (US4, reorganização) concluída; contagens iguais às da T001
+- [X] Fase 2 (US4, reorganização) concluída; contagens iguais às da T001
 - [ ] Fase 3 (US1) concluída
 - [ ] Fase 4 (US2) concluída
 - [ ] Fase 5 (US3) concluída

@@ -1,4 +1,4 @@
-import { createUnloadGuard } from './unload-guard.js';
+import { createUnloadGuard } from '../../src/unload-guard.js';
 
 function fakeTarget() {
   const handlers = new Set();

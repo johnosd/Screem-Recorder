@@ -1,4 +1,4 @@
-import { transcribePreRecorded } from './post-transcription-client.js';
+import { transcribePreRecorded } from '../../src/post-transcription-client.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -95,7 +95,7 @@ test('sem chave ou tentativa abortada não envia áudio', async () => {
 });
 
 test('vídeo sem áudio falha antes da rede', async () => {
-  const source = new Blob([readFileSync(join(__dirname, 'fixtures', 'video-silent.webm'))],
+  const source = new Blob([readFileSync(join(__dirname, '..', 'fixtures', 'video-silent.webm'))],
     { type: 'video/webm' });
   const fetchImpl = jest.fn();
   await expect(transcribePreRecorded({ media: source, language: 'en', key: 'test-only', fetchImpl }))

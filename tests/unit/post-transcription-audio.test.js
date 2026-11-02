@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
-import { prepareAudio } from './post-transcription-audio.js';
+import { prepareAudio } from '../../src/post-transcription-audio.js';
 
 function fixture(name, type) {
-  const media = new Blob([readFileSync(join(__dirname, 'fixtures', name))], { type });
+  const media = new Blob([readFileSync(join(__dirname, '..', 'fixtures', name))], { type });
   Object.defineProperty(media, 'name', { value: name });
   return media;
 }

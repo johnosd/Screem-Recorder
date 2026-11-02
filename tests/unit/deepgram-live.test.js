@@ -1,4 +1,4 @@
-import { closeDeepgramSocket, startKeepAlive } from './deepgram-live.js';
+import { closeDeepgramSocket, startKeepAlive } from '../../src/deepgram-live.js';
 
 function fakeSocket(readyState = 1) {
   const listeners = {};

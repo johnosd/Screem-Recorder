@@ -2,7 +2,7 @@ const { expect, chromium } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..');
 const apiUrl = 'https://api.elevenlabs.io/v1/speech-to-text';
 
 async function saveElevenLabsKey(page) {

@@ -4,10 +4,10 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { transcribePreRecorded } from '../src/post-transcription-client.js';
-import { buildSrt, validSegments } from '../src/subtitles.js';
+import { transcribePreRecorded } from '../../src/post-transcription-client.js';
+import { buildSrt, validSegments } from '../../src/subtitles.js';
 
-const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
 async function readKey() {
   const env = await readFile(join(root, '.env'), 'utf8');

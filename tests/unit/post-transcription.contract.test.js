@@ -1,5 +1,5 @@
-import { createPostTranscriptionSession } from './post-transcription-session.js';
-import { buildSrt } from './subtitles.js';
+import { createPostTranscriptionSession } from '../../src/post-transcription-session.js';
+import { buildSrt } from '../../src/subtitles.js';
 
 function sampleMedia() {
   return new Blob(['sample media'], { type: 'video/webm' });

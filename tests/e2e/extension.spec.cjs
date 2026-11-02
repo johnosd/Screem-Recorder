@@ -90,7 +90,7 @@ test('worker de MP3 codifica PCM em MP3 e a página não pede fontes externas', 
 test('recupera a gravação interrompida salva em IndexedDB e a descarta depois', async ({}, testInfo) => {
   await withExtension(testInfo, async ({ page }) => {
     await expect(page.locator('#recovery')).toBeHidden();
-    const bytes = (await fs.readFile(path.join(root, 'src', 'fixtures', 'video-audio.webm'))).toString('base64');
+    const bytes = (await fs.readFile(path.join(root, 'tests', 'fixtures', 'video-audio.webm'))).toString('base64');
     await page.evaluate(async b64 => {
       const blob = new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'video/webm' });
       const db = await new Promise((resolve, reject) => {
@@ -137,7 +137,7 @@ test('importa WebM, envia só áudio após clique e gera TXT/SRT', async ({}, te
         ]
       }) });
     });
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await expect(page.locator('#post-status')).toContainText('Arquivo pronto');
     expect(requests).toBe(0);
     await saveElevenLabsKey(page);
@@ -185,7 +185,7 @@ test('importa MP4/AAC e envia M4A só de áudio no Chromium', async ({}, testInf
           { type: 'word', text: 'Fala', start: 0, end: 0.8 }
         ] }) });
     });
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.mp4'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.mp4'));
     await expect(page.locator('#post-status')).toContainText('Arquivo pronto');
     expect(requests).toBe(0);
     await saveElevenLabsKey(page);
@@ -219,7 +219,7 @@ for (const [filename, mimeType] of [
           ] }) });
       });
       await page.locator('#import-file').setInputFiles({
-        name: filename, mimeType, buffer: await fs.readFile(path.join(root, 'src/fixtures', filename))
+        name: filename, mimeType, buffer: await fs.readFile(path.join(root, 'tests/fixtures', filename))
       });
       await expect(page.locator('#post-status')).toContainText('Arquivo pronto');
       expect(requests).toBe(0);
@@ -256,7 +256,7 @@ test('cancelar nova transcrição preserva texto e downloads anteriores', async 
           words: [{ type: 'word', text: requests === 1 ? 'Anterior' : 'Tardia',
             start: 0, end: 0.8 }] }) }).catch(() => {});
     });
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await page.locator('#post-start').click();
     await expect(page.locator('#transcript-preview')).toHaveText('Texto anterior');
@@ -305,7 +305,7 @@ test('preserva TXT e avisa quando resposta real nao tem tempos para SRT', async 
         words: [{ type: 'word', text: 'Fala', start: 0, end: 0 }]
       })
     }));
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await expect(page.locator('#post-key-status')).toContainText('Chave salva');
     await page.locator('#post-start').click();
@@ -330,7 +330,7 @@ test('baixa SRT quando algumas palavras não têm intervalo válido', async ({},
         ]
       })
     }));
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await page.locator('#post-start').click();
     await expect(page.locator('#post-status')).toContainText('Transcrição concluída');
@@ -359,7 +359,7 @@ test('SRT agrupa palavras em frases legíveis preservando pausas', async ({}, te
       status: 200, contentType: 'application/json',
       body: JSON.stringify({ text: 'O modelo usa um plano para separar dados. Depois ele classifica.', words })
     }));
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await page.locator('#post-start').click();
     await expect(page.locator('#btn-dl-srt')).toBeEnabled();
@@ -383,7 +383,7 @@ test('baixa SRT exportado pela ElevenLabs mesmo sem tempos por palavra', async (
           is_base64_encoded: false, content: srt }
       ] })
     }));
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await expect(page.locator('#post-key-status')).toContainText('Chave salva');
     await page.locator('#post-start').click();
@@ -402,7 +402,7 @@ test('HTTP 422 de parametro mostra diagnostico sem chamar arquivo corrompido', a
     await context.route(apiUrl, route => route.fulfill({ status: 422, contentType: 'application/json',
       body: JSON.stringify({ detail: [{ loc: ['body', 'additional_formats', 0],
         msg: 'secret text', type: 'value_error' }] }) }));
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await expect(page.locator('#post-key-status')).toContainText('Chave salva');
     await page.locator('#post-start').click();
@@ -420,7 +420,7 @@ test('401 de atividade incomum mostra bloqueio da ElevenLabs, não chave inváli
     await context.route(apiUrl, route => route.fulfill({ status: 401, contentType: 'application/json',
       body: JSON.stringify({ detail: { status: 'detected_unusual_activity',
         message: 'private response' } }) }));
-    await page.locator('#import-file').setInputFiles(path.join(root, 'src/fixtures/video-audio.webm'));
+    await page.locator('#import-file').setInputFiles(path.join(root, 'tests/fixtures/video-audio.webm'));
     await saveElevenLabsKey(page);
     await expect(page.locator('#post-key-status')).toContainText('Chave salva');
     await page.locator('#post-start').click();
