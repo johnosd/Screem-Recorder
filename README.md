@@ -44,7 +44,7 @@ npm run test:e2e          # build + Playwright com a extensão carregada
 
 O teste usa mídia sintética e resposta simulada da ElevenLabs. Os eventos de console, service worker e rede ficam em `test-results/`; em falhas, também há trace e screenshot. Consulte [a estratégia de teste no navegador](sdd/specs/001-transcricao-pos-gravacao/browser-testing.md) e [as evidências da feature](sdd/specs/001-transcricao-pos-gravacao/qa-evidence.md).
 
-Há também testes reais do Deepgram para arquivo gravado: `npm run test:deepgram:auth` valida a chave `DEEPGRAM_API_KEY` do `.env` sem áudio e `npm run test:deepgram:live` transcreve a mesma amostra e confere os formatos aceitos (podem consumir créditos; a saída não traz chave nem texto).
+Há também testes reais do Deepgram para arquivo gravado: `npm run test:deepgram:auth` valida a chave `DEEPGRAM_API_KEY` do `.env` sem áudio e `npm run test:deepgram:live` transcreve a mesma amostra e confere os formatos aceitos (podem consumir créditos; a saída não traz chave nem texto). Para incluir os casos com fala em PT-BR e inglês, em MP3, MP4 e WebM, e um arquivo longo, gere as amostras antes com `tests/integration/generate-speech-samples.ps1` (precisa de `ffmpeg`; saem em `%TEMP%`, fora do repositório).
 
 O teste real da ElevenLabs é separado: `npm run test:elevenlabs:auth` valida a chave do `.env` sem áudio; `npm run test:elevenlabs:live` transcreve a amostra com fala em `%TEMP%\screen-recorder-stt-eval-20261031\sample01.webm` pelo mesmo cliente do app e pode consumir créditos. Nenhum dos dois integra o Playwright ou o Jest padrão. A saída mostra somente status e contagens, sem chave nem texto transcrito.
 

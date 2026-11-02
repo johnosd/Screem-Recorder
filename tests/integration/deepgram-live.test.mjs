@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join, resolve, basename } from 'node:path';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { transcribePreRecorded } from '../../src/post-transcription-client.js';
@@ -97,4 +98,75 @@ if (!authOnly) {
       assert.equal(outcome.ok, true);
     });
   }
+
+  // Fala audível em cada formato aceito pelo app e nos dois idiomas. As amostras saem de
+  // tests/integration/generate-speech-samples.ps1 (fora do repositório); sem elas, os casos são pulados.
+  const speechDir = process.env.DEEPGRAM_SPEECH_DIR ||
+    join(tmpdir(), 'screen-recorder-stt-eval-20261031', 'formats');
+  const types = { webm: 'audio/webm', mp3: 'audio/mpeg', mp4: 'video/mp4' };
+  for (const [prefix, language] of [['fala-pt', 'pt-BR'], ['fala-en', 'en']]) {
+    for (const extension of ['webm', 'mp3', 'mp4']) {
+      const path = join(speechDir, `${prefix}.${extension}`);
+      test(`Deepgram real: fala ${language} em ${extension.toUpperCase()} gera texto, tempos e SRT`,
+        { timeout: 180_000, skip: existsSync(path) ? false : `amostra ausente: ${basename(path)}` }, async () => {
+          const key = await readKey();
+          const { file } = await media(path, types[extension]);
+          const { seen, fetchImpl } = spy();
+          let result;
+          try {
+            result = await transcribePreRecorded({ media: file, language, key, provider: 'deepgram',
+              signal: AbortSignal.timeout(150_000), fetchImpl });
+          } catch (error) {
+            report({ file: basename(path), httpStatus: seen.httpStatus, appCode: error?.code || 'UNKNOWN' });
+            throw new Error('Transcrição real falhou; veja o diagnóstico sem segredos acima.');
+          }
+          const hasSrt = validSegments(result.segments);
+          report({ file: basename(path), language, httpStatus: seen.httpStatus, textLength: result.text.length,
+            timingInfo: result.timingInfo, srtCues: hasSrt ? result.segments.length : 0 });
+          assert.ok(result.text.trim(), 'A resposta não trouxe texto.');
+          assert.ok(hasSrt, 'A resposta não trouxe tempos válidos para SRT.');
+          assert.equal(result.timingInfo.invalid, 0);
+          // Conteúdo conhecido da amostra sintetizada em inglês (verificado sem imprimir o texto).
+          if (language === 'en') assert.match(result.text, /fox/i);
+        });
+    }
+  }
+
+  // Arquivo longo (vários MB): mede o tempo de resposta e confirma que o limite de tamanho real não barra.
+  const longPath = join(speechDir, 'fala-pt-longa.mp3');
+  test('Deepgram real: arquivo longo de vários MB é aceito e transcrito', {
+    timeout: 600_000, skip: existsSync(longPath) ? false : 'amostra ausente: fala-pt-longa.mp3' }, async () => {
+    const key = await readKey();
+    const { bytes, file } = await media(longPath, 'audio/mpeg');
+    const { seen, fetchImpl } = spy();
+    const started = Date.now();
+    let result;
+    try {
+      result = await transcribePreRecorded({ media: file, language: 'pt-BR', key, provider: 'deepgram',
+        signal: AbortSignal.timeout(540_000), fetchImpl });
+    } catch (error) {
+      report({ file: 'fala-pt-longa.mp3', mediaBytes: bytes.length, httpStatus: seen.httpStatus,
+        appCode: error?.code || 'UNKNOWN', elapsedMs: Date.now() - started });
+      throw new Error('Transcrição real do arquivo longo falhou; veja o diagnóstico sem segredos acima.');
+    }
+    report({ file: 'fala-pt-longa.mp3', mediaBytes: bytes.length, httpStatus: seen.httpStatus,
+      elapsedMs: Date.now() - started, textLength: result.text.length, timingInfo: result.timingInfo });
+    assert.equal(seen.httpStatus, 200);
+    assert.ok(result.text.trim());
+    assert.equal(result.timingInfo.invalid, 0);
+  });
+
+  // A mesma chave do arquivo gravado abre o WebSocket ao vivo (só o handshake; nenhum áudio é enviado).
+  test('Deepgram real: a mesma chave abre o WebSocket da transcrição ao vivo', { timeout: 30_000 }, async () => {
+    const key = await readKey();
+    const outcome = await new Promise(resolve => {
+      const socket = new WebSocket('wss://api.deepgram.com/v1/listen?language=pt-BR&model=nova-3' +
+        '&encoding=linear16&sample_rate=16000', ['token', key]);
+      const timer = setTimeout(() => { socket.close(); resolve('timeout'); }, 20_000);
+      socket.onopen = () => { clearTimeout(timer); socket.close(); resolve('open'); };
+      socket.onerror = () => { clearTimeout(timer); resolve('error'); };
+    });
+    report({ liveWebSocket: outcome });
+    assert.equal(outcome, 'open');
+  });
 }

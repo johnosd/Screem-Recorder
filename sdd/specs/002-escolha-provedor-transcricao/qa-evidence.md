@@ -42,16 +42,14 @@ Contagens da reorganização (SC-006): antes 76 Jest e 31 e2e; depois da Fase 2,
 
 ## 3. Pendente (não validado — Princípio IV)
 
-Depois da verificação real da seção 5, continuam **sem** validação (R-002, R-007); a feature não deve ser chamada de plenamente validada até serem cobertos:
+Depois da verificação real das seções 5 e 6, continuam **sem** validação; a feature não deve ser chamada de plenamente validada até serem cobertos:
 
-- Código HTTP para créditos esgotados (assumido 402) e limite real de arquivo (assumido 2 GB).
-- Chave que vale no ao vivo mas não no arquivo gravado (ou o inverso): a chave usada nos testes valeu nos dois usos.
-- Arquivo longo: tempo de resposta e `TIMEOUT` (teto de 30 min do cliente).
-- Fala real em inglês com o Deepgram (o inglês foi exercitado só com mídia sintética, sem fala).
+- O limite real de **2 GB** por arquivo do Deepgram: consta só na documentação (inviável de testar). A documentação traz também uma página de erros com limite de "2 MB" para outro contexto; o arquivo de 2,58 MB foi aceito, então esse limite não vale para o arquivo gravado.
+- Chave valendo no ao vivo mas não no arquivo gravado (ou o inverso): coberto no cenário feliz; não há como provocar o caso contrário.
 - Seletor nativo de captura e a gravação real de tela/áudio no Chrome (o e2e usa captura simulada).
 - Verificação visual no Chrome da lista "Serviço de transcrição" e do texto "Transcrito por …".
 
-Roteiro manual: `quickstart.md` §3 e §4.
+Roteiro manual: `quickstart.md` §3.
 
 ## 4. Desvios e descobertas
 
@@ -75,3 +73,20 @@ Executada com as chaves do `.env` (ignorado pelo Git), por `tests/integration/de
 | ElevenLabs Scribe v2, mesma amostra, após a refatoração para `timed-words` | HTTP 200; 571 caracteres; 100 palavras, 100 com tempo válido; SRT gerado |
 
 Conclusões: o formato de pedido e de resposta do Deepgram documentado confere com o comportamento real (R-002 confirmado para `pt-BR` e para os formatos de áudio preparados); a refatoração do adaptador da ElevenLabs não alterou o comportamento real. As fixtures sintéticas voltam sem texto por não terem fala, o que prova a aceitação do formato, não a qualidade.
+
+## 6. Fala audível em todos os formatos e idiomas, arquivo longo e WebSocket (2026-11-02)
+
+As amostras foram geradas por `tests/integration/generate-speech-samples.ps1` (fora do repositório, em `%TEMP%`): PT-BR derivado da amostra de fala da avaliação (46,7 s), inglês sintetizado com a voz Microsoft David (13,6 s) e um arquivo longo com a amostra PT-BR repetida 6 vezes. Cada arquivo passa por `transcribePreRecorded` com `provider: 'deepgram'`, exatamente como no app (remux local do áudio, extração de M4A etc.).
+
+| Arquivo | Formato enviado ao serviço | HTTP | Palavras (válidas) | Observação |
+| --- | --- | --- | --- | --- |
+| `fala-pt.webm` | WebM/Opus | 200 | 102 (102) | SRT com 102 cues |
+| `fala-pt.mp3` | MP3 | 200 | 103 (103) | |
+| `fala-pt.mp4` | M4A (AAC extraído do MP4) | 200 | 103 (103) | |
+| `fala-en.webm` | WebM/Opus | 200 | 35 (35) | texto contém "fox" |
+| `fala-en.mp3` | MP3 | 200 | 35 (35) | texto contém "fox" |
+| `fala-en.mp4` | M4A (AAC extraído do MP4) | 200 | 35 (35) | texto contém "fox" |
+| `fala-pt-longa.mp3` (2,58 MB, 4,7 min) | MP3 | 200 | 614 (614) | **1,3 s** de resposta; sem erro de tamanho |
+| WebSocket ao vivo com a mesma chave | handshake | `open` | n/a | nenhum áudio enviado |
+
+Conclusões: SC-001 fica provado com fala real nos três formatos de áudio preparados e nos dois idiomas (Deepgram, `nova-3`); o código 402 da documentação (`ASR_PAYMENT_REQUIRED`) coincide com o `PAYMENT_REQUIRED` do adaptador. Os testes ficam em `tests/integration/deepgram-live.test.mjs` e pulam os casos cujas amostras não existirem.
