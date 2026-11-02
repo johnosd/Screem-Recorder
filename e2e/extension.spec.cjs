@@ -20,6 +20,40 @@ test('engrenagem abre configurações com as chaves de API e volta à tela anter
   });
 });
 
+test('chaves ficam preenchidas e ocultas, o olho revela e o status diz se está salva', async ({}, testInfo) => {
+  await withExtension(testInfo, async ({ page }) => {
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('#key-status')).toHaveText('Nenhuma chave configurada.');
+    await expect(page.locator('#post-key-status')).toContainText('ainda não configurada');
+    await page.locator('#post-key').fill('e2e-chave-eleven');
+    await expect(page.locator('#post-key-status')).toContainText('Alterações não salvas');
+    await page.locator('#post-save-key').click();
+    await expect(page.locator('#post-key-status')).toContainText('Chave salva');
+    await expect(page.locator('#post-key')).toHaveValue('e2e-chave-eleven');
+    await page.evaluate(() => chrome.storage.local.set({ deepgramKey: 'e2e-chave-deepgram' }));
+
+    await page.reload();
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('#post-key')).toHaveValue('e2e-chave-eleven');
+    await expect(page.locator('#post-key')).toHaveAttribute('type', 'password');
+    await expect(page.locator('#post-key-status')).toContainText('salva');
+    await expect(page.locator('#input-api-key')).toHaveValue('e2e-chave-deepgram');
+    await expect(page.locator('#key-status')).toHaveText('✓ Key salva');
+
+    const eye = page.locator('.btn-eye[data-target="post-key"]');
+    await expect(eye).toHaveAttribute('aria-label', 'Mostrar chave');
+    await eye.click();
+    await expect(page.locator('#post-key')).toHaveAttribute('type', 'text');
+    await expect(eye).toHaveAttribute('aria-label', 'Ocultar chave');
+    await page.locator('#btn-settings-close').click();
+    await page.locator('#btn-settings').click();
+    await expect(page.locator('#post-key')).toHaveAttribute('type', 'password');
+
+    await page.locator('#input-api-key').fill('');
+    await expect(page.locator('#key-status')).toContainText('Campo vazio');
+  });
+});
+
 test('qualidade da gravação escolhida nas configurações persiste ao reabrir a página', async ({}, testInfo) => {
   await withExtension(testInfo, async ({ page }) => {
     await page.locator('#btn-settings').click();

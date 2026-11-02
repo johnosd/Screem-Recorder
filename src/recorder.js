@@ -47,6 +47,8 @@ let transcriptPaused = false;
 let stopKeepAlive = null;
 let showErrTimer = null;
 let recovery = null;
+let savedDeepgramKey = '';
+let savedElevenKey = '';
 
 // ---- DOM ----
 const $ = (s) => document.getElementById(s) || document.querySelector(s);
@@ -619,7 +621,10 @@ document.getElementById('toggle-transcript').addEventListener('change', (e) => {
 });
 
 $('btn-settings').addEventListener('click', () => $('card').classList.add('settings-open'));
-$('btn-settings-close').addEventListener('click', () => $('card').classList.remove('settings-open'));
+$('btn-settings-close').addEventListener('click', () => {
+  document.querySelectorAll('.btn-eye').forEach(btn => setReveal(btn, false));
+  $('card').classList.remove('settings-open');
+});
 
 document.querySelectorAll('.lbtn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -649,6 +654,7 @@ document.getElementById('btn-save-key').addEventListener('click', async () => {
     });
     if (res.ok) {
       saveApiKey(key);
+      savedDeepgramKey = key;
       log('API key Deepgram válida e salva');
       statusEl.className = 'key-status ok';
       statusEl.textContent = '✓ Key válida — salva com sucesso';
@@ -704,10 +710,50 @@ $('post-save-key').addEventListener('click', () => {
     return;
   }
   chrome.storage.local.set({ elevenLabsKey: key }, () => {
-    $('post-key-status').textContent = 'Chave salva localmente. A validade será conferida na próxima transcrição.';
-    $('post-key').value = '';
+    savedElevenKey = key;
+    setKeyStatus($('post-key-status'), 'ok',
+      '✓ Chave salva localmente. A validade será conferida na próxima transcrição.');
   });
 });
+
+// ---- Estado visível das chaves ----
+function setKeyStatus(el, state, text) {
+  el.className = 'key-status ' + state;
+  el.textContent = text;
+}
+
+function syncDeepgramStatus() {
+  const current = $('input-api-key').value.trim();
+  const el = $('key-status');
+  if (current && current === savedDeepgramKey) setKeyStatus(el, 'ok', '✓ Key salva');
+  else if (current) setKeyStatus(el, 'none', 'Alterações não salvas — clique em Salvar.');
+  else if (savedDeepgramKey) setKeyStatus(el, 'none', 'Campo vazio — a key salva continua em uso.');
+  else setKeyStatus(el, 'none', 'Nenhuma chave configurada.');
+}
+
+function syncElevenStatus() {
+  const current = $('post-key').value.trim();
+  const el = $('post-key-status');
+  if (current && current === savedElevenKey) setKeyStatus(el, 'ok', '✓ Chave ElevenLabs salva localmente.');
+  else if (current) setKeyStatus(el, 'none', 'Alterações não salvas — clique em Salvar.');
+  else if (savedElevenKey) setKeyStatus(el, 'none', 'Campo vazio — a chave salva continua em uso.');
+  else setKeyStatus(el, 'none', 'Chave ElevenLabs ainda não configurada.');
+}
+
+$('input-api-key').addEventListener('input', syncDeepgramStatus);
+$('post-key').addEventListener('input', syncElevenStatus);
+
+// Olho: mostra ou oculta a chave digitada/salva.
+function setReveal(btn, show) {
+  $(btn.dataset.target).type = show ? 'text' : 'password';
+  btn.setAttribute('aria-pressed', String(show));
+  const label = show ? 'Ocultar chave' : 'Mostrar chave';
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+}
+
+document.querySelectorAll('.btn-eye').forEach(btn => btn.addEventListener('click', () =>
+  setReveal(btn, btn.getAttribute('aria-pressed') !== 'true')));
 
 $('import-file').addEventListener('change', event => {
   const file = event.target.files?.[0];
@@ -814,16 +860,14 @@ createUnloadGuard(window, () =>
 
 // ---- Init ----
 getApiKey().then(k => {
-  if (k) {
-    document.getElementById('input-api-key').value = k;
-    const statusEl = document.getElementById('key-status');
-    statusEl.className = 'key-status ok';
-    statusEl.textContent = '✓ Key salva';
-    statusEl.classList.remove('hidden');
-  }
+  savedDeepgramKey = k;
+  $('input-api-key').value = k;
+  syncDeepgramStatus();
 });
 getElevenLabsKey().then(k => {
-  $('post-key-status').textContent = k ? 'Chave ElevenLabs salva localmente.' : 'Chave ElevenLabs ainda não configurada.';
+  savedElevenKey = k;
+  $('post-key').value = k;
+  syncElevenStatus();
 });
 offerRecovery();
 log('Recorder page loaded. Ready.');

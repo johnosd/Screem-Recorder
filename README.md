@@ -76,8 +76,9 @@ A transcrição ao vivo envia áudio da captura à [Deepgram](https://deepgram.c
 **Configuração inicial (uma vez):**
 
 1. Crie conta em deepgram.com → Console → API Keys → Create Key
-2. Na extensão, marque o toggle **Transcrição em tempo real**
-3. Cole a API key e clique em **Salvar** — a key é validada e armazenada localmente
+2. Na extensão, abra ⚙ **Configurações**, cole a API key e clique em **Salvar** — a key é validada e armazenada localmente
+3. O campo volta preenchido (oculto) nas próximas aberturas; use o ícone de olho para ver a chave. O texto ao lado diz se ela está salva, se há alterações não salvas ou se não há chave
+4. Marque o toggle **Transcrição em tempo real** na tela inicial
 
 **Durante a gravação:** o texto aparece ao vivo no painel da extensão.
 

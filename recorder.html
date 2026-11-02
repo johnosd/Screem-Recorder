@@ -246,12 +246,23 @@
     .api-key-row {
       margin-top: 12px; display: flex; gap: 8px;
     }
+    .key-field { flex: 1; position: relative; display: flex; }
     .api-key-row input {
-      flex: 1; padding: 8px 12px;
+      flex: 1; width: 100%; padding: 8px 36px 8px 12px;
       background: var(--bg); border: 1px solid var(--border);
       border-radius: 10px; color: var(--text); font-family: inherit; font-size: 12px; outline: none;
     }
     .api-key-row input:focus { border-color: var(--accent); }
+    .btn-eye {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      width: 28px; height: 28px; padding: 0; border: none; border-radius: 8px;
+      background: transparent; color: var(--text3); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-eye:hover { color: var(--text); }
+    .btn-eye svg { width: 16px; height: 16px; }
+    .btn-eye .eye-off, .btn-eye[aria-pressed="true"] .eye-on { display: none; }
+    .btn-eye[aria-pressed="true"] .eye-off { display: block; }
     .btn-save-key {
       padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px;
       background: var(--bg4); color: var(--text2); font-family: inherit;
@@ -281,6 +292,7 @@
       padding: 5px 10px; border-radius: 8px; line-height: 1.4;
     }
     .key-status.ok  { color: var(--green); background: var(--green-g); }
+    .key-status.none { color: var(--yellow); background: rgba(251,191,36,0.08); }
     .key-status.err { color: var(--accent); background: var(--accent-g); }
     .key-status.checking { color: var(--text3); }
 
@@ -363,16 +375,16 @@
         <h3>Deepgram</h3>
         <p>Usada na transcrição em tempo real durante a gravação.</p>
         <div id="api-key-row" class="api-key-row">
-          <input type="password" id="input-api-key" autocomplete="off" placeholder="Deepgram API Key">
+          <div class="key-field"><input type="password" id="input-api-key" autocomplete="off" placeholder="Deepgram API Key"><button type="button" class="btn-eye" data-target="input-api-key" aria-pressed="false" aria-label="Mostrar chave" title="Mostrar chave"><svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div>
           <button id="btn-save-key" class="btn-save-key">Salvar</button>
         </div>
-        <div id="key-status" class="key-status hidden"></div>
+        <div id="key-status" class="key-status none">Nenhuma chave configurada.</div>
       </div>
       <div class="settings-sec">
         <h3>ElevenLabs</h3>
         <p>Usada na transcrição de arquivos e gravações após a captura. Separada da chave Deepgram.</p>
         <div class="api-key-row">
-          <input id="post-key" type="password" autocomplete="off" placeholder="ElevenLabs API Key">
+          <div class="key-field"><input id="post-key" type="password" autocomplete="off" placeholder="ElevenLabs API Key"><button type="button" class="btn-eye" data-target="post-key" aria-pressed="false" aria-label="Mostrar chave" title="Mostrar chave"><svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button></div>
           <button id="post-save-key" class="btn-save-key">Salvar</button>
         </div>
         <div id="post-key-status" class="key-status"></div>
