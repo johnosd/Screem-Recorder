@@ -56,6 +56,11 @@ export async function openRecoveryStore(factory = globalThis.indexedDB) {
       if (!meta || !size) return null;
       return { meta, blob: new Blob(parts, { type: meta.type || 'video/webm' }) };
     },
+    // STUB (sdd-plan 003): apaga as partes já baixadas; ver logic/recovery-parts.md.
+    async markPartDownloaded(part) {
+      void part;
+      throw new Error('not implemented');
+    },
     clear,
     close() { db.close(); }
   };
