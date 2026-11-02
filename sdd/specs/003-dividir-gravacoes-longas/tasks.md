@@ -149,11 +149,11 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 ### Implementation
 
-- [ ] T020 [US3] Em `src/recorder.js` (`offerRecovery`/`restoreRecording`): usar `loadSession().parts`; mensagem com o número de partes e tamanho total; remux serial de cada parte; lista com nomes `gravacao-…_recuperada_…_parte-NN.webm`; uma parte recuperada segue o caminho de hoje; descartar ou baixar tudo limpa a cópia; iniciar nova gravação avisa que as partes serão descartadas.
+- [X] T020 [US3] Em `src/recorder.js` (`offerRecovery`/`restoreRecording`): usar `loadSession().parts`; mensagem com o número de partes e tamanho total; remux serial de cada parte; lista com nomes `gravacao-…_recuperada_…_parte-NN.webm`; uma parte recuperada segue o caminho de hoje; descartar ou baixar tudo limpa a cópia; iniciar nova gravação avisa que as partes serão descartadas.
 
 ### Testes da Fase
 
-- [ ] T021 [US3] `tests/e2e/parts.spec.cjs`: queda com 2 partes fechadas e uma em andamento → recuperar mostra as partes; baixar uma e recarregar → só as demais voltam; baixar todas → nada a recuperar; gravação legada de uma parte continua recuperável (como na feature de recuperação).
+- [X] T021 [US3] `tests/e2e/parts.spec.cjs`: queda com 2 partes fechadas e uma em andamento → recuperar mostra as partes; baixar uma e recarregar → só as demais voltam; baixar todas → nada a recuperar; gravação legada de uma parte continua recuperável (como na feature de recuperação).
 
 **Critério de Conclusão**: contratos 5/5 e travas íntegras; testes da fase verdes; teste e2e de recuperação existente continua verde.
 
@@ -161,11 +161,11 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T020 `offerRecovery` diz quantas partes foram encontradas; `restoreRecording` usa `loadSession().parts`, remuxa e lê a duração de uma parte por vez, nomeia `gravacao-…_recuperada_…_parte-NN.webm` e mantém o número original das partes (`totalParts()` = maior índice); uma parte de índice 1 segue o caminho de hoje, qualquer outro caso mostra a lista; baixar uma parte a remove da cópia local e baixar todas ou descartar limpa tudo.
+- Contrato: `npx jest tests/unit/split-recording.contract.test.js` → 5/5 verdes; trava 003 íntegra; trava 002 e 001 íntegras.
+- Testes executados: `npm test` → 129/129; `npm run build` ok; `npm run test:e2e` → 60/60 (56 + 4 novos de recuperação; os 2 e2e anteriores de recuperação de uma parte seguem verdes).
+- Pendências: Queda real do Chrome (processo morto) não foi exercitada; o e2e fecha a página sem parar a gravação.
 
 ---
 
@@ -180,7 +180,7 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 - [X] Fase 2 (módulos e contratos) concluída
 - [X] Fase 3 (US1) concluída
 - [X] Fase 4 (US2) concluída
-- [ ] Fase 5 (US3) concluída
+- [X] Fase 5 (US3) concluída
 - [ ] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 003, 002 e 001
 - [ ] `npm test` e `npm run test:e2e` executados e registrados; contagens anteriores preservadas (SC-003)
 - [ ] `npm run build` sem erro, sem editar `dist/`

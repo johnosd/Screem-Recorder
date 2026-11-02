@@ -352,3 +352,111 @@ test('descartar uma gravação em partes limpa lista, sessões e bloco ao vivo; 
     await expect(page.locator('#transcript-done-block')).toBeHidden();
   });
 });
+
+// ---------- US3: recuperação de várias partes ----------
+// Simula a queda da janela no meio da gravação: fecha a página sem parar e reabre a extensão.
+async function crashWithParts(context, page, id) {
+  await open(page, id, LIMIT);
+  await startRecording(page);
+  await expect(page.locator('#part-indicator')).toHaveText('Parte 3', { timeout: 40_000 });
+  await page.waitForTimeout(1500);
+  await page.close();
+  const reopened = await context.newPage();
+  await reopened.goto(`chrome-extension://${id}/recorder.html`);
+  return reopened;
+}
+
+test('queda no meio de uma gravação dividida: todas as partes aparecem para recuperar e abrem', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    const reopened = await crashWithParts(context, page, id);
+    await expect(reopened.locator('#recovery')).toBeVisible();
+    await expect(reopened.locator('#recovery-text')).toContainText('partes de uma gravação interrompida');
+    await expect(reopened.locator('#recovery-text')).toContainText('descarta');
+    await reopened.locator('#recovery-restore').click();
+    await expect(reopened.locator('#done-title')).toHaveText('Gravação recuperada');
+    await expect(reopened.locator('#parts-block')).toBeVisible();
+    const count = await reopened.locator('.part-item').count();
+    expect(count).toBeGreaterThanOrEqual(3);
+    await expect(reopened.locator('#post-part-title')).toContainText(`Parte 1 de ${count}`);
+    for (const index of [1, count]) {
+      const file = await downloadPart(reopened, index);
+      expect(file.name).toMatch(new RegExp(`_recuperada_.*_parte-0${index}\\.webm$`));
+      const info = await inspectWebm(file.path);
+      expect(info.duration).toBeGreaterThan(0);
+      expect(info.video).toBe(1);
+    }
+  });
+});
+
+test('parte baixada não volta; baixar todas encerra a recuperação', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    const reopened = await crashWithParts(context, page, id);
+    await reopened.locator('#recovery-restore').click();
+    await expect(reopened.locator('#parts-block')).toBeVisible();
+    const count = await reopened.locator('.part-item').count();
+    await downloadPart(reopened, 1);
+
+    await reopened.reload();
+    await expect(reopened.locator('#recovery')).toBeVisible();
+    await reopened.locator('#recovery-restore').click();
+    await expect(reopened.locator('#parts-block')).toBeVisible();
+    expect(await reopened.locator('.part-item').count()).toBe(count - 1);
+    await expect(reopened.locator('.part-item').first()).toHaveAttribute('data-part', '2');
+    await expect(reopened.locator('#post-part-title')).toContainText(`Parte 2 de ${count}`);
+
+    const names = [];
+    reopened.on('download', download => names.push(download.suggestedFilename()));
+    await reopened.locator('#btn-dl-all').click();
+    await expect.poll(() => names.length, { timeout: 15_000 }).toBe(count - 1);
+    expect(names[0]).toMatch(/_parte-02\.webm$/);
+
+    await reopened.reload();
+    await expect(reopened.locator('#recovery')).toBeHidden();
+  });
+});
+
+test('descartar a recuperação apaga as partes guardadas', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    const reopened = await crashWithParts(context, page, id);
+    await expect(reopened.locator('#recovery')).toBeVisible();
+    await reopened.locator('#recovery-discard').click();
+    await expect(reopened.locator('#recovery')).toBeHidden();
+    await reopened.reload();
+    await expect(reopened.locator('#recovery')).toBeHidden();
+  });
+});
+
+test('sobrando só uma parte (a 2) a recuperação mostra a lista, sem perder o número da parte', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    await open(page, id);
+    // Semeia duas partes direto no banco: a parte 1 já foi baixada (não existe), restou a 2.
+    const bytes = (await fs.readFile(require('node:path').join(__dirname, '..', 'fixtures', 'video-audio.webm'))).toString('base64');
+    await page.evaluate(async b64 => {
+      const blob = new Blob([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], { type: 'video/webm' });
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open('recorder-recovery', 1);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(['meta', 'chunks'], 'readwrite');
+        tx.objectStore('meta').put({ mode: 'video', type: 'video/webm', startedAt: Date.now() }, 'current');
+        tx.objectStore('chunks').add({ part: 2, blob });
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    }, bytes);
+    await page.reload();
+    await expect(page.locator('#recovery')).toBeVisible();
+    await page.locator('#recovery-restore').click();
+    await expect(page.locator('#parts-block')).toBeVisible();
+    await expect(page.locator('.part-item')).toHaveCount(1);
+    await expect(page.locator('.part-item').first()).toHaveAttribute('data-part', '2');
+    await expect(page.locator('#post-part-title')).toContainText('Parte 2 de 2');
+    const file = await downloadPart(page, 2);
+    expect(file.name).toMatch(/_parte-02\.webm$/);
+    await page.reload();
+    await expect(page.locator('#recovery')).toBeHidden();
+  });
+});

@@ -203,13 +203,17 @@ function ensurePartSession(part) {
   return session;
 }
 
+function totalParts() {
+  return Math.max(parts.length, ...parts.map(entry => entry.index));
+}
+
 function selectPart(index) {
   const part = parts.find(entry => entry.index === index);
   if (!part) return;
   selectedPart = index;
   postSession = ensurePartSession(part);
   $('post-panel').classList.remove('hidden');
-  $('post-part-title').textContent = `Parte ${index} de ${parts.length}`;
+  $('post-part-title').textContent = `Parte ${index} de ${totalParts()}`;
   $('post-part-title').classList.remove('hidden');
   renderPostState(postSession.getSnapshot());
   renderPartsList();
@@ -1052,7 +1056,10 @@ async function offerRecovery() {
     if (!session) return;
     const when = session.meta.startedAt ? new Date(session.meta.startedAt).toLocaleString() : 'data desconhecida';
     const mb = (session.blob.size / 1024 / 1024).toFixed(1);
-    $('recovery-text').textContent = `Encontrada uma gravação interrompida (${when}, ${mb} MB). ` +
+    const count = session.parts.length;
+    $('recovery-text').textContent = (count > 1
+      ? `Encontradas ${count} partes de uma gravação interrompida (${when}, ${mb} MB no total). `
+      : `Encontrada uma gravação interrompida (${when}, ${mb} MB). `) +
       'Iniciar uma nova gravação descarta esta cópia.';
     $('recovery').classList.remove('hidden');
     $('recovery-restore').onclick = () => restoreRecording(session);
@@ -1067,32 +1074,53 @@ async function offerRecovery() {
   }
 }
 
-async function restoreRecording({ meta, blob }) {
+async function restoreRecording({ meta, parts: recovered }) {
   $('recovery-restore').disabled = true;
   try {
-    const finalBlob = await finalizeWebm(blob);
     mode = meta.mode === 'audio' ? 'audio' : 'video';
     splitRecorder = null;
-    parts = [];
     stopping = false;
     wasPaused = false;
-    recordedBlob = finalBlob;
+    recordedBlob = null;
     recordingFilename = `${mode === 'video' ? 'gravacao-video' : 'gravacao-audio'}_recuperada_${timestamp(new Date(meta.startedAt || Date.now()))}`;
     resetPostSession();
-    postSession.setSource({ blob: finalBlob, name: `${recordingFilename}.webm`, origin: 'recorded', kind: mode });
+    // Remux de uma parte por vez (DI-006); a duração vem do arquivo, pois o relógio não existe aqui.
+    const restored = [];
+    for (const entry of recovered) {
+      const finalBlob = await finalizeWebm(entry.blob);
+      restored.push({ index: entry.index, name: '', blob: finalBlob, size: finalBlob.size,
+        durationSec: await readDuration(finalBlob), downloaded: false });
+    }
+    parts = restored;
+    const total = totalParts();
+    parts.forEach(part => { part.name = partFileName(recordingFilename, part.index, total); });
     unsavedRecording = true;
     $('done-title').textContent = 'Gravação recuperada';
     doneLabel.textContent = mode === 'video' ? 'Vídeo + Áudio' : 'Só Áudio';
-    doneDur.textContent = 'Duração: não registrada';
-    doneSub.textContent = 'Arquivo .webm pronto';
-    btnDl.disabled = false;
-    btnDlMp3.disabled = false;
-    btnDl.style.display = '';
-    btnDlMp3.style.display = mode === 'audio' ? '' : 'none';
+    const known = parts.every(part => Number.isFinite(part.durationSec));
+    doneDur.textContent = 'Duração: ' + (known
+      ? fmt(parts.reduce((sum, part) => sum + part.durationSec, 0) * 1000) : 'não registrada');
     btnDiscard.textContent = 'Descartar';
     $('recovery').classList.add('hidden');
+    $('parts-block').classList.add('hidden');
+    if (parts.length === 1 && parts[0].index === 1) {
+      // Uma parte: mesmo caminho de hoje.
+      recordedBlob = parts[0].blob;
+      postSession.setSource({ blob: recordedBlob, name: `${recordingFilename}.webm`, origin: 'recorded', kind: mode });
+      doneSub.textContent = 'Arquivo .webm pronto';
+      btnDl.disabled = false;
+      btnDlMp3.disabled = false;
+      btnDl.style.display = '';
+      btnDlMp3.style.display = mode === 'audio' ? '' : 'none';
+    } else {
+      btnDl.style.display = 'none';
+      btnDlMp3.style.display = 'none';
+      doneSub.textContent = `${parts.length} ${parts.length === 1 ? 'parte recuperada' : 'partes recuperadas'}`;
+      $('parts-block').classList.remove('hidden');
+      selectPart(parts[0].index);
+    }
     view('done');
-    log('Gravação interrompida recuperada');
+    log(`Gravação interrompida recuperada (${parts.length} parte(s))`);
   } catch (error) {
     showErr('Não foi possível recuperar a gravação: ' + error.message);
   } finally {

@@ -138,9 +138,8 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Área | Estado |
 | --- | --- |
-| Fases 1 a 4 | Concluídas: módulos, integração, lista de partes, Baixar todas, transcrição por parte com resultados separados e uma por vez, bloco ao vivo sem SRT. |
-| Fase 5 (US3) | Não iniciada: recuperação de várias partes. |
-| Polish | Não iniciada. |
+| Fases 1 a 5 | Concluídas: módulos, integração, lista de partes, Baixar todas, transcrição por parte, bloco ao vivo e recuperação de várias partes. |
+| Polish | Não iniciada: README, CLAUDE.md, QA e busca final. |
 
 ## Riscos e Decisões
 
@@ -164,15 +163,16 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 | 2026-11-02 | Fases 1 e 2 | Baseline registrado; `split-recorder`, `recording-parts`, `recovery-store` por parte e `webm-duration` implementados; 5/5 contratos verdes, Jest 127. | Integração em `recorder.js` (Fase 3). |
 | 2026-11-02 | Fase 3 (US1) | Gravador em partes integrado: indicador de parte, lista com Baixar, fila de remux, caminho de uma parte idêntico; 7 e2e novos; fechamento do recorder esperando o onstop (descoberta). | Baixar todas, transcrição por parte e bloco ao vivo (Fase 4). |
 | 2026-11-02 | Fase 4 (US2) | Baixar todas, sessão por parte, bloco ao vivo, nomes de TXT/SRT com a parte; 4 e2e novos. | Recuperação de várias partes (Fase 5). |
+| 2026-11-02 | Fase 5 (US3) | Recuperação de várias partes com numeração preservada; 4 e2e novos; 60 e2e no total. | Documentação e QA no Polish. |
 
-**PRÓXIMO**: Fase 5 (US3): recuperação de várias partes em `offerRecovery`/`restoreRecording`.
+**PRÓXIMO**: Polish: README, CLAUDE.md, qa-evidence, quickstart e busca final.
 
 ## Arquivos Principais
 
-- `src/recorder.js`, `recorder.html`
+- `src/recorder.js` (`offerRecovery`, `restoreRecording`)
 - `src/recovery-store.js`
 - `tests/e2e/parts.spec.cjs`
-- `sdd/specs/003-dividir-gravacoes-longas/logic/parts-ui.md`
+- `README.md`, `CLAUDE.md`
 
 ## Cuidados para Retomada
 
@@ -184,3 +184,4 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 - No e2e, esperar `#part-indicator` mostrar "Parte N" é mais estável que contar segundos: a captura falsa varia de 60 a 150 KB/s.
 - Uma parte vazia (sem dados) é descartada: em e2e que dependem de ≥2 partes, espere ~1,5 s depois do indicador "Parte N" antes de parar.
 - `postSession` aponta para a sessão da parte selecionada; o botão Transcrever da lista só seleciona, a transcrição começa em "Transcrever áudio".
+- Na recuperação, `totalParts()` usa o maior índice para o nome (`_parte-02`) e o título ("Parte 2 de 3") mesmo que a parte 1 já tenha sido baixada.
