@@ -24,15 +24,15 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 **Purpose**: registrar o ponto de partida antes de mexer no código.
 
-- [ ] T001 [Shared] Rodar e anotar: `npm test` (esperado: 106 verdes e 5 vermelhos do contrato novo), `npm run build`, `npm run test:e2e` (esperado: 45/45) e `check-contract-tests.ps1` para os slugs `001-transcricao-pos-gravacao`, `002-escolha-provedor-transcricao` e `003-dividir-gravacoes-longas` (todos íntegros). Essas contagens são a referência de SC-003.
+- [X] T001 [Shared] Rodar e anotar: `npm test` (esperado: 106 verdes e 5 vermelhos do contrato novo), `npm run build`, `npm run test:e2e` (esperado: 45/45) e `check-contract-tests.ps1` para os slugs `001-transcricao-pos-gravacao`, `002-escolha-provedor-transcricao` e `003-dividir-gravacoes-longas` (todos íntegros). Essas contagens são a referência de SC-003.
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T001, baseline antes de mexer no código.
+- Contrato: 003: 5 contratos íntegros e vermelhos; 002 e 001: travas íntegras.
+- Testes executados: `npm test` → 106 verdes e 5 vermelhos (contratos 003); `npm run build` ok; `npm run test:e2e` → 45/45.
+- Pendências: Nenhuma.
 
 ---
 
@@ -53,16 +53,16 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 ### Implementation
 
-- [ ] T002 [P] [Shared] Implementar `resolvePartLimit` e `partFileName` em `src/recording-parts.js` (substitui os stubs; manter `PART_LIMIT_BYTES`), conforme `logic/split-recorder.md` → contrato: `sem divisão há uma parte; nomes ordenáveis...`
-- [ ] T003 [P] [US3] Em `src/recovery-store.js`: `appendChunk(blob, part = 1)` grava `{ part, blob }`; `loadSession()` lê `Blob` solto (parte 1) e `{ part, blob }` e devolve `{ meta, blob, parts }`; `markPartDownloaded(part)` apaga os pedaços da parte e, se não sobrar nenhum, os metadados; sem mudar a versão do banco → contrato: `recuperação devolve as partes na ordem...`
-- [ ] T004 [US1] Implementar `createSplitRecorder` em `src/split-recorder.js` (substitui o stub): contagem de bytes, rotação sequencial, falha ao abrir a próxima parte, `stop()` idempotente e esperando a rotação, parte vazia descartada, `onChunk`/`onPartClosed`/`onError`, conforme as 8 regras de `logic/split-recorder.md` → contrato: `ao atingir o limite...`, `pausa e retomada...`, `falha ao abrir a nova parte...`, `sem divisão há uma parte...`
-- [ ] T005 [P] [Shared] Criar `src/webm-duration.js` com `readDuration(blob)` (mediabunny: `getDurationFromMetadata`, reserva `computeDuration`; devolve segundos ou `null` em falha).
+- [X] T002 [P] [Shared] Implementar `resolvePartLimit` e `partFileName` em `src/recording-parts.js` (substitui os stubs; manter `PART_LIMIT_BYTES`), conforme `logic/split-recorder.md` → contrato: `sem divisão há uma parte; nomes ordenáveis...`
+- [X] T003 [P] [US3] Em `src/recovery-store.js`: `appendChunk(blob, part = 1)` grava `{ part, blob }`; `loadSession()` lê `Blob` solto (parte 1) e `{ part, blob }` e devolve `{ meta, blob, parts }`; `markPartDownloaded(part)` apaga os pedaços da parte e, se não sobrar nenhum, os metadados; sem mudar a versão do banco → contrato: `recuperação devolve as partes na ordem...`
+- [X] T004 [US1] Implementar `createSplitRecorder` em `src/split-recorder.js` (substitui o stub): contagem de bytes, rotação sequencial, falha ao abrir a próxima parte, `stop()` idempotente e esperando a rotação, parte vazia descartada, `onChunk`/`onPartClosed`/`onError`, conforme as 8 regras de `logic/split-recorder.md` → contrato: `ao atingir o limite...`, `pausa e retomada...`, `falha ao abrir a nova parte...`, `sem divisão há uma parte...`
+- [X] T005 [P] [Shared] Criar `src/webm-duration.js` com `readDuration(blob)` (mediabunny: `getDurationFromMetadata`, reserva `computeDuration`; devolve segundos ou `null` em falha).
 
 ### Testes da Fase
 
-- [ ] T006 [P] [US1] `tests/unit/split-recorder.test.js`: três rotações seguidas; `stop()` chamado durante a rotação e chamado duas vezes; parte de 0 bytes descartada sem buraco de índice; `data.size === 0` ignorado; `onChunk` recebe a parte certa; erro em `onPartClosed` não derruba a gravação.
-- [ ] T007 [P] [Shared] `tests/unit/recording-parts.test.js` (bordas de `resolvePartLimit` e `partFileName`) e `tests/unit/webm-duration.test.js` com as fixtures de `tests/fixtures/`.
-- [ ] T008 [P] [US3] Acrescentar em `tests/unit/recovery-store.test.js`: gravações legadas (`Blob` solto) continuam recuperáveis; várias partes em ordem; `markPartDownloaded` de parte inexistente não falha.
+- [X] T006 [P] [US1] `tests/unit/split-recorder.test.js`: três rotações seguidas; `stop()` chamado durante a rotação e chamado duas vezes; parte de 0 bytes descartada sem buraco de índice; `data.size === 0` ignorado; `onChunk` recebe a parte certa; erro em `onPartClosed` não derruba a gravação.
+- [X] T007 [P] [Shared] `tests/unit/recording-parts.test.js` (bordas de `resolvePartLimit` e `partFileName`) e `tests/unit/webm-duration.test.js` com as fixtures de `tests/fixtures/`.
+- [X] T008 [P] [US3] Acrescentar em `tests/unit/recovery-store.test.js`: gravações legadas (`Blob` solto) continuam recuperáveis; várias partes em ordem; `markPartDownloaded` de parte inexistente não falha.
 
 **Critério de Conclusão**: `npx jest tests/unit/split-recording.contract.test.js` → 5/5 verdes e `check-contract-tests.ps1 -Slug 003-dividir-gravacoes-longas` íntegro; `npm test` verde (106 anteriores + 5 contratos + testes novos); `npm run build` sem erro; trava das features 001 e 002 íntegras.
 
@@ -70,11 +70,11 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T002 `resolvePartLimit` e `partFileName` em `src/recording-parts.js`; T003 `recovery-store` com parte por pedaço, leitura de `Blob` legado, `loadSession().parts` e `markPartDownloaded`; T004 `createSplitRecorder` em `src/split-recorder.js` (rotação sequencial, falha ao abrir, `stop()` idempotente e esperando a rotação, parte vazia descartada, pausa pedida durante a troca vale para a parte nova); T005 `src/webm-duration.js`; testes T006 a T008 (16 novos).
+- Contrato: `npx jest tests/unit/split-recording.contract.test.js` → 5/5 verdes; trava 003 íntegra; trava 002 e 001 íntegras.
+- Testes executados: `npm test` (suíte unitária) → 127/127 (106 anteriores + 5 contratos + 16 novos); `npm run build` ok.
+- Pendências: Nenhuma.
 
 ---
 
@@ -177,7 +177,7 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 ### Checklist de Release
 
-- [ ] Fase 2 (módulos e contratos) concluída
+- [X] Fase 2 (módulos e contratos) concluída
 - [ ] Fase 3 (US1) concluída
 - [ ] Fase 4 (US2) concluída
 - [ ] Fase 5 (US3) concluída

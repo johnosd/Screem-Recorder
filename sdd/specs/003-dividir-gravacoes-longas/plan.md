@@ -138,8 +138,9 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Área | Estado |
 | --- | --- |
-| Planejamento | Concluído em 2026-11-02; contratos escritos, vermelhos e travados. |
-| Implementação | Não iniciada. |
+| Fase 1 e 2 | Concluídas: módulos de divisão, nomes, guarda por parte e duração; 5 contratos verdes. |
+| Fase 3 (US1) | Não iniciada: ligação em `recorder.js`. |
+| Fases 4, 5 e Polish | Não iniciadas. |
 
 ## Riscos e Decisões
 
@@ -160,18 +161,20 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Data | Fase/Story | Resumo | Pendência Principal |
 | --- | --- | --- | --- |
+| 2026-11-02 | Fases 1 e 2 | Baseline registrado; `split-recorder`, `recording-parts`, `recovery-store` por parte e `webm-duration` implementados; 5/5 contratos verdes, Jest 127. | Integração em `recorder.js` (Fase 3). |
 
-**PRÓXIMO**: Fase 1 (baseline) e Fase 2 (módulos e contratos) — `/sdd-execute 003-dividir-gravacoes-longas`.
+**PRÓXIMO**: Fase 3 (US1): ligar o gravador em partes em `recorder.js` e `recorder.html`.
 
 ## Arquivos Principais
 
-- `sdd/specs/003-dividir-gravacoes-longas/logic/split-recorder.md` e `logic/parts-ui.md`
-- `tests/unit/split-recording.contract.test.js` (travado)
-- `src/split-recorder.js`, `src/recording-parts.js`, `src/recovery-store.js`
+- `src/split-recorder.js`, `src/recording-parts.js`, `src/webm-duration.js`, `src/recovery-store.js`
 - `src/recorder.js`, `recorder.html`
+- `tests/unit/split-recording.contract.test.js` (travado)
+- `sdd/specs/003-dividir-gravacoes-longas/logic/parts-ui.md`
 
 ## Cuidados para Retomada
 
 - O contrato `tests/unit/split-recording.contract.test.js` está vermelho de propósito até a Fase 2. `npm test` mostra 5 falhas e 106 verdes: é o baseline, não regressão.
 - Não edite contratos nem as travas das features 001 e 002.
 - A medição de lacuna do `research.md` usou captura simulada; não a trate como prova no Chrome real.
+- `split-recorder` chama `onPartClosed` com `{ index, blob }` já com o `type` dos pedaços; o remux e a duração acontecem em `recorder.js` (fila serial).

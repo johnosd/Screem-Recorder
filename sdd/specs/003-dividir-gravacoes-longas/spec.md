@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Planejada
+**Status**: Em Execução
 
 **Input**: "precisamos salvar pensando nesse limite os arquivos de gravação" (limite de 2 GB do Deepgram para arquivos), com a escolha de dividir automaticamente em partes.
 

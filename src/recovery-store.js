@@ -40,26 +40,54 @@ export async function openRecoveryStore(factory = globalThis.indexedDB) {
       tx.objectStore(META).put({ ...meta }, 'current');
       await done(tx);
     },
-    async appendChunk(blob) {
+    // `part` indica a parte da gravação (1 por padrão). Valores antigos eram um Blob solto: valem como parte 1.
+    async appendChunk(blob, part = 1) {
       const tx = db.transaction(CHUNKS, 'readwrite');
-      tx.objectStore(CHUNKS).add(blob);
+      tx.objectStore(CHUNKS).add({ part, blob });
       await done(tx);
     },
-    // Devolve { meta, blob } ou null se não houver sessão com dados.
+    // Devolve { meta, blob, parts } ou null se não houver sessão com dados.
+    //   blob  - todos os pedaços juntos (gravações de uma parte e compatibilidade)
+    //   parts - [{ index, blob }] por parte, em ordem
     async loadSession() {
       const tx = db.transaction([META, CHUNKS], 'readonly');
-      const [meta, parts] = await Promise.all([
+      const [meta, values] = await Promise.all([
         request(tx.objectStore(META).get('current')),
         request(tx.objectStore(CHUNKS).getAll())
       ]);
-      const size = parts.reduce((total, part) => total + part.size, 0);
+      const chunks = values.map(value => value instanceof Blob ? { part: 1, blob: value }
+        : { part: value?.part ?? 1, blob: value?.blob });
+      const size = chunks.reduce((total, chunk) => total + (chunk.blob?.size || 0), 0);
       if (!meta || !size) return null;
-      return { meta, blob: new Blob(parts, { type: meta.type || 'video/webm' }) };
+      const type = meta.type || 'video/webm';
+      const byPart = new Map();
+      for (const chunk of chunks) {
+        if (!byPart.has(chunk.part)) byPart.set(chunk.part, []);
+        byPart.get(chunk.part).push(chunk.blob);
+      }
+      const parts = [...byPart.keys()].sort((x, y) => x - y)
+        .map(index => ({ index, blob: new Blob(byPart.get(index), { type }) }));
+      return { meta, blob: new Blob(chunks.map(chunk => chunk.blob), { type }), parts };
     },
-    // STUB (sdd-plan 003): apaga as partes já baixadas; ver logic/recovery-parts.md.
+    // Apaga os pedaços de uma parte já baixada; sem pedaços restantes, apaga também os metadados.
     async markPartDownloaded(part) {
-      void part;
-      throw new Error('not implemented');
+      const tx = db.transaction([META, CHUNKS], 'readwrite');
+      const store = tx.objectStore(CHUNKS);
+      await new Promise((resolve, reject) => {
+        const cursor = store.openCursor();
+        cursor.onerror = () => reject(cursor.error);
+        cursor.onsuccess = () => {
+          const current = cursor.result;
+          if (!current) { resolve(); return; }
+          const value = current.value;
+          const index = value instanceof Blob ? 1 : (value?.part ?? 1);
+          if (index === part) current.delete();
+          current.continue();
+        };
+      });
+      const remaining = await request(store.count());
+      if (remaining === 0) tx.objectStore(META).clear();
+      await done(tx);
     },
     clear,
     close() { db.close(); }

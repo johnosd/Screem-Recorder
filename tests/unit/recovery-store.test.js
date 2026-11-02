@@ -44,3 +44,66 @@ test('os dados sobrevivem à reabertura do banco', async () => {
   expect(await text((await second.loadSession()).blob)).toBe('persistido');
   second.close();
 });
+
+describe('partes da gravação (feature 003)', () => {
+  test('gravações salvas pela versão anterior (Blob solto) continuam recuperáveis como parte 1', async () => {
+    const factory = new IDBFactory();
+    const legacy = await openRecoveryStore(factory);
+    await legacy.startSession({ mode: 'audio', type: 'audio/webm' });
+    legacy.close();
+    // Escreve um Blob solto direto no object store, como a versão anterior fazia.
+    const db = await new Promise((resolve, reject) => {
+      const open = factory.open('recorder-recovery', 1);
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('chunks', 'readwrite');
+      tx.objectStore('chunks').add(new Blob(['antigo-1']));
+      tx.objectStore('chunks').add(new Blob(['antigo-2']));
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    const store = await openRecoveryStore(factory);
+    const session = await store.loadSession();
+    expect(session.parts.map(part => part.index)).toEqual([1]);
+    expect(await text(session.parts[0].blob)).toBe('antigo-1antigo-2');
+    expect(await text(session.blob)).toBe('antigo-1antigo-2');
+    await store.markPartDownloaded(1);
+    expect(await store.loadSession()).toBeNull();
+    store.close();
+  });
+
+  test('partes saem em ordem numérica e blob reúne todas; o tipo vem dos metadados', async () => {
+    await store.startSession({ mode: 'video', type: 'video/webm' });
+    await store.appendChunk(new Blob(['p10']), 10);
+    await store.appendChunk(new Blob(['p2']), 2);
+    await store.appendChunk(new Blob(['p10b']), 10);
+    const session = await store.loadSession();
+    expect(session.parts.map(part => part.index)).toEqual([2, 10]);
+    expect(await text(session.parts[1].blob)).toBe('p10p10b');
+    expect(session.parts.every(part => part.blob.type === 'video/webm')).toBe(true);
+    expect(session.blob.size).toBe('p10p2p10b'.length);
+  });
+
+  test('marcar parte inexistente como baixada não apaga nem falha', async () => {
+    await store.startSession({ mode: 'video', type: 'video/webm' });
+    await store.appendChunk(new Blob(['x']), 1);
+    await store.markPartDownloaded(99);
+    expect((await store.loadSession()).parts.map(part => part.index)).toEqual([1]);
+  });
+
+  test('apagar a última parte baixada remove também os metadados', async () => {
+    await store.startSession({ mode: 'video', type: 'video/webm' });
+    await store.appendChunk(new Blob(['x']), 1);
+    await store.appendChunk(new Blob(['y']), 2);
+    await store.markPartDownloaded(1);
+    expect((await store.loadSession()).parts.map(part => part.index)).toEqual([2]);
+    await store.markPartDownloaded(2);
+    expect(await store.loadSession()).toBeNull();
+    await store.startSession({ mode: 'audio', type: 'audio/webm' });
+    await store.appendChunk(new Blob(['z']));
+    expect((await store.loadSession()).meta.mode).toBe('audio');
+  });
+});
