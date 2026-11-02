@@ -8,7 +8,7 @@ Data da execução: 2026-11-02. Separa o que foi provado **localmente** (Jest), 
 | --- | --- |
 | `npm test` | 21 suítes, **129/129** (baseline 106 + 5 contratos + 18 testes novos) |
 | `npm run build` | compilado sem erro |
-| `npm run test:e2e` | **61/61** (baseline 45 + 16 novos em `tests/e2e/parts.spec.cjs`); os 45 anteriores passaram **sem alteração** (SC-003) |
+| `npm run test:e2e` | **64/64** (baseline 45 + 19 novos em `tests/e2e/parts.spec.cjs`); os 45 anteriores passaram **sem alteração** (SC-003) |
 | `check-contract-tests.ps1 -Slug 003-dividir-gravacoes-longas` | íntegra, 5 testes |
 | `check-contract-tests.ps1 -Slug 002-escolha-provedor-transcricao` | íntegra, 5 testes |
 | `check-contract-tests.ps1 -Slug 001-transcricao-pos-gravacao` | íntegra, 5 testes |
@@ -33,6 +33,8 @@ Medição no e2e (captura simulada, `?partLimitBytes=100000`): **6 partes, 5 tro
 | FR-009 partes baixadas não voltam; cópia apagada | contrato 5; e2e | Provado |
 | FR-010 indicador discreto da parte | e2e (`#part-indicator`: oculto com uma parte, "Parte N" com divisão) | Provado |
 | FR-011 falha ao abrir a próxima parte preserva as fechadas | contrato 3; testes unitários de falha e de callbacks | Provado em unidade; **não** exercitado em captura real |
+| FR-011 falha ao **guardar** as partes encerra com mensagem e preserva as fechadas | e2e com `IDBObjectStore.prototype.add` recusando após 6 escritas (tela final aparece sozinha, mensagem "não foi possível guardar a gravação", partes baixáveis); o teste **falha** com o comportamento antigo (só log), conferido por reversão temporária. Armazenamento indisponível já no início: a gravação segue e a tela avisa que não há recuperação (decisão do proprietário, R-011) | Provado (simulado) |
+| Edge: fechar a janela com partes não baixadas pede confirmação | e2e `beforeunload` com várias partes; some depois de **Baixar todas** | Provado |
 | FR-012 pausa, transcrição ao vivo e aviso de saída inalterados | e2e de pausa atravessando divisão; e2e de bloco ao vivo; e2e anteriores de pausa, Deepgram e saída seguem verdes | Provado |
 | FR-013 sem download automático nem recodificação | "Baixar todas" só por clique e entrega o `Blob` remuxado de cada parte | Provado |
 | SC-002 partes abrem, nenhuma acima do limite com folga | e2e lê duração e tracks; o limite de 1,4 GB está abaixo do teto do remux (contrato 4) | Provado (limite reduzido); tamanho real **pendente** |
@@ -61,3 +63,5 @@ Roteiro manual: `quickstart.md` §3 a §5.
 - **Transcrever por parte** seleciona a parte e abre o painel; a transcrição começa em **Transcrever áudio** (A-04 do plano).
 - **Parte final curta**: uma parte criada logo antes de parar pode ter poucos KB (`0,0 MB`) e ainda assim é um arquivo válido; só 0 bytes é descartado.
 - **MP3** do modo áudio só em gravações de uma parte (DI-009, R-006).
+- **Falha da suíte completa (2026-11-02)**: numa execução de `npm run test:e2e` o teste "Baixar todas baixa as partes na ordem" falhou com duração de **14,6 min** (a execução inteira levou 20,7 min; o normal é 5 a 6 min e o timeout do teste é 60 s), o que indica a máquina ter ficado parada (suspensão) e não um defeito do app. Não foi tratado como "ok": o teste foi repetido 3 vezes isolado (11,3 s cada), o arquivo `parts.spec.cjs` passou inteiro (19/19, 2,9 min) e uma nova suíte completa passou **64/64 em 5,7 min**. Fica registrado como ocorrência única não reproduzida; se voltar a aparecer, investigar como instabilidade real.
+

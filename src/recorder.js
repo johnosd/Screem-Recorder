@@ -24,6 +24,7 @@ let mode = 'video';
 let splitRecorder = null;
 let parts = [];
 let finalizeQueue = Promise.resolve();
+let storageFailure = null;   // falha ao guardar a gravação no IndexedDB durante a gravação (FR-011)
 const partSessions = new Map();   // índice da parte -> sessão de transcrição própria (DI-007)
 let selectedPart = 1;
 let unsubscribePost = null;
@@ -372,6 +373,7 @@ btnStart.addEventListener('click', async () => {
     recordedBlob = null;
     stopping = false;
     wasPaused = false;
+    storageFailure = null;
     parts = [];
     finalizeQueue = Promise.resolve();
     $('part-indicator').classList.add('hidden');
@@ -380,8 +382,7 @@ btnStart.addEventListener('click', async () => {
       limitBytes: resolvePartLimit(location.search),
       timeslice: 1000,
       mimeType: mode === 'video' ? 'video/webm' : 'audio/webm',
-      onChunk: ({ part, blob }) => recovery?.appendChunk(blob, part)
-        .catch(error => log('Cópia de segurança falhou: ' + error.message)),
+      onChunk: ({ part, blob }) => recovery?.appendChunk(blob, part).catch(handleStorageFailure),
       onPartClosed: handlePartClosed,
       onError: handleSplitError
     });
@@ -401,6 +402,9 @@ btnStart.addEventListener('click', async () => {
     // 5. UI
     view('rec');
     warnEl.classList.remove('on');
+    if (!recovery) {
+      showWarn('⚠ Sem cópia de segurança neste navegador: se a janela fechar, a gravação não poderá ser recuperada.');
+    }
     paused = false;
     transcriptFull = '';
     transcriptSegments = [];
@@ -549,6 +553,23 @@ function enqueueFinalize(part) {
   }).catch(error => log(`Parte ${part.index}: falha ao finalizar (${error.message})`));
 }
 
+// Não dá para guardar a gravação (ex.: sem espaço): encerra com mensagem e preserva as partes já gravadas,
+// que continuam na memória e podem ser baixadas (FR-011). Falhas depois do pedido de parar só ficam registradas.
+function handleStorageFailure(error) {
+  if (storageFailure) return;
+  storageFailure = error;
+  recovery = null;
+  log('❌ Falha ao guardar a gravação no navegador: ' + error.message);
+  if (!stopping) doStop();
+}
+
+// Motivo da interrupção para a tela final: falha ao abrir a parte seguinte ou ao guardar a gravação.
+function interruptionReason(error) {
+  if (error) return error.message;
+  if (storageFailure) return `não foi possível guardar a gravação no navegador (${storageFailure.message}); baixe as partes disponíveis`;
+  return null;
+}
+
 function handleSplitError(error) {
   log('❌ Falha ao abrir a próxima parte: ' + error.message);
   showErr('Não foi possível continuar a gravação: ' + error.message);
@@ -642,10 +663,11 @@ $('btn-dl-live').addEventListener('click', () => {
 // Fim da gravação: uma parte segue o caminho de sempre (DI-004); várias viram a lista de partes.
 async function completeRecording(recorder, error) {
   log(`Gravação encerrada: ${parts.length} parte(s)`);
-  if (error) log('Gravação interrompida: ' + error.message);
+  const reason = interruptionReason(error);
+  if (reason) log('Gravação interrompida: ' + reason);
   if (parts.length === 0) {
     markSaved();
-    doneSub.textContent = error ? `Gravação interrompida: ${error.message}` : 'Gravação vazia. Tente novamente.';
+    doneSub.textContent = reason ? `Gravação interrompida: ${reason}` : 'Gravação vazia. Tente novamente.';
     return;
   }
   parts.forEach(part => { part.name = partFileName(recordingFilename, part.index, parts.length); });
@@ -654,7 +676,7 @@ async function completeRecording(recorder, error) {
     btnDlMp3.style.display = 'none';
     $('parts-block').classList.remove('hidden');
     selectPart(1);
-    doneSub.textContent = error ? `${parts.length} partes (interrompida: ${error.message})` : `${parts.length} partes prontas`;
+    doneSub.textContent = reason ? `${parts.length} partes (interrompida: ${reason})` : `${parts.length} partes prontas`;
     // A transcrição ao vivo é única: aparece num bloco próprio, só com TXT (sem SRT por parte).
     await transcriptClosing;
     if (splitRecorder !== recorder) return;
@@ -667,7 +689,7 @@ async function completeRecording(recorder, error) {
   recordedBlob = parts[0].blob;
   postSession.setSource({ blob: recordedBlob, name: `${recordingFilename}.webm`,
     origin: 'recorded', kind: mode });
-  doneSub.textContent = error ? `Arquivo .webm pronto (interrompida: ${error.message})` : 'Arquivo .webm pronto';
+  doneSub.textContent = reason ? `Arquivo .webm pronto (interrompida: ${reason})` : 'Arquivo .webm pronto';
   btnDl.disabled = false;
   btnDlMp3.disabled = false;
   // Aguarda o Deepgram entregar os últimos resultados antes de fixar o texto ao vivo.

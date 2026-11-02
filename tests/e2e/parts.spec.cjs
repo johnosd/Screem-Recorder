@@ -484,3 +484,88 @@ test('modo Só Áudio também se divide; cada parte é só áudio e não oferece
     }
   });
 });
+
+// ---------- Convergência: falha ao guardar (FR-011) e aviso de saída com várias partes ----------
+test('falha ao guardar durante a gravação encerra com mensagem e preserva as partes já gravadas', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    // Depois de N escritas bem-sucedidas, o IndexedDB passa a recusar por falta de espaço.
+    await context.addInitScript(() => {
+      const original = IDBObjectStore.prototype.add;
+      let calls = 0;
+      IDBObjectStore.prototype.add = function (...args) {
+        if (window.__failAddAfter !== undefined && ++calls > window.__failAddAfter) {
+          throw new DOMException('Sem espaço', 'QuotaExceededError');
+        }
+        return original.apply(this, args);
+      };
+    });
+    await open(page, id, LIMIT);
+    await page.evaluate(() => { window.__failAddAfter = 6; });
+    await startRecording(page);
+    // O próprio app encerra: a tela final aparece sem clicar em Parar.
+    await expect(page.locator('#v-done')).toHaveClass(/on/, { timeout: 60_000 });
+    await expect(page.locator('#done-sub')).toContainText('não foi possível guardar a gravação', { timeout: 30_000 });
+    await expect(page.locator('#parts-block')).toBeVisible();
+    const count = await page.locator('.part-item').count();
+    expect(count).toBeGreaterThanOrEqual(2);
+    for (let index = 1; index <= count; index++) {
+      const info = await inspectWebm((await downloadPart(page, index)).path);
+      expect(info.duration).toBeGreaterThan(0);
+      expect(info.video).toBe(1);
+    }
+  });
+});
+
+test('sem armazenamento disponível ao começar: a gravação segue e a tela avisa que não há recuperação', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    await context.addInitScript(() => {
+      const original = IDBFactory.prototype.open;
+      IDBFactory.prototype.open = function (name, ...rest) {
+        if (name === 'recorder-recovery') throw new DOMException('indisponível', 'SecurityError');
+        return original.call(this, name, ...rest);
+      };
+    });
+    await open(page, id);
+    await startRecording(page);
+    await expect(page.locator('#warn')).toContainText('Sem cópia de segurança');
+    await page.waitForTimeout(1800);
+    await page.locator('#btn-stop').click();
+    await expect(page.locator('#done-sub')).toHaveText('Arquivo .webm pronto', { timeout: 30_000 });
+    await expect(page.locator('#parts-block')).toBeHidden();
+    const promise = page.waitForEvent('download');
+    await page.locator('#btn-dl').click();
+    expect((await inspectWebm(await (await promise).path())).duration).toBeGreaterThan(0.3);
+  });
+});
+
+test('fechar a janela com partes não baixadas pede confirmação; depois de baixar todas, não pede', async ({}, testInfo) => {
+  await record(testInfo, async ({ page, id }) => {
+    const dialogs = [];
+    page.on('dialog', dialog => { dialogs.push(dialog.type()); dialog.dismiss(); });
+    await open(page, id, LIMIT);
+    await startRecording(page);
+    await expect(page.locator('#part-indicator')).toHaveText('Parte 2', { timeout: 40_000 });
+    await page.waitForTimeout(1500);
+    await page.locator('#btn-stop').click();
+    await expect(page.locator('#parts-block')).toBeVisible({ timeout: 30_000 });
+    const count = await page.locator('.part-item').count();
+
+    await page.close({ runBeforeUnload: true });
+    await expect.poll(() => dialogs.length).toBe(1);
+    expect(page.isClosed()).toBe(false);
+
+    // Baixar só parte das partes ainda deixa o aviso ligado.
+    await downloadPart(page, 1);
+    if (count > 1) {
+      await page.close({ runBeforeUnload: true });
+      await expect.poll(() => dialogs.length).toBe(2);
+    }
+    const names = [];
+    page.on('download', download => names.push(download.suggestedFilename()));
+    await page.locator('#btn-dl-all').click();
+    await expect.poll(() => names.length, { timeout: 15_000 }).toBe(count);
+    await page.close({ runBeforeUnload: true });
+    await expect.poll(() => page.isClosed()).toBe(true);
+    expect(dialogs.length).toBe(count > 1 ? 2 : 1);
+  });
+});

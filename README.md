@@ -82,9 +82,10 @@ Quando a gravação em andamento chega a cerca de **1,4 GB**, o app fecha a part
 - Duração aproximada de cada parte no pior caso (vídeo sempre no bitrate máximo do perfil): **Alta** cerca de 23 min, **Equilibrada** cerca de 36 min, **Econômica** cerca de 1,2 h. Quando a tela muda pouco o arquivo cresce mais devagar e a parte dura mais.
 - Ao parar, a tela final lista as partes com nome (`..._parte-01.webm`, `..._parte-02.webm`), duração e tamanho. Cada parte tem **Baixar** e **Transcrever**, e há **Baixar todas** (o Chrome pode pedir permissão para vários downloads).
 - Cada parte é transcrita separadamente (uma por vez), com o serviço que você escolher, e o SRT acompanha o arquivo daquela parte. Não há texto unificado das partes. A transcrição ao vivo continua contínua e aparece num bloco próprio, só com TXT.
+- O TXT e o SRT de uma parte levam o sufixo dela (`transcricao_..._parte-02.txt`, `..._parte-02.srt`). A transcrição ao vivo da gravação inteira é baixada como `transcricao-ao-vivo_....txt`.
 - Uma gravação que não chega ao limite continua exatamente como antes: um arquivo, sem lista e sem sufixo no nome.
 - No modo Só Áudio, o **MP3** só é oferecido quando a gravação tem uma parte; nas divididas, o download é `.webm`.
-- As partes ficam guardadas no navegador (IndexedDB) até você baixá-las ou descartá-las: se a janela cair, a próxima abertura oferece **Recuperar** todas as partes que ainda não foram baixadas. Gravações muito longas ocupam bastante disco enquanto não forem baixadas.
+- As partes ficam guardadas no navegador (IndexedDB) até você baixá-las ou descartá-las: se a janela cair, a próxima abertura oferece **Recuperar** todas as partes que ainda não foram baixadas. Gravações muito longas ocupam bastante disco enquanto não forem baixadas. Se o navegador não conseguir guardar (por exemplo, falta de espaço), a gravação é encerrada com uma mensagem e as partes já gravadas continuam disponíveis para baixar; se o armazenamento já estiver indisponível ao começar, a gravação segue, mas a tela avisa que não haverá recuperação após uma queda.
 
 ### Transcrição ao vivo (opcional)
 

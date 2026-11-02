@@ -138,11 +138,11 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Área | Estado |
 | --- | --- |
-| Fases 1 a 5 | Concluídas. |
-| Polish | Concluída: README, CLAUDE.md, e2e do modo Só Áudio, `qa-evidence.md` com a medição da lacuna. |
+| Fases 1 a 6 | Concluídas. |
+| Fase 7 (Convergência) | Parcial: T026, T027 e T029 feitas; T028 (Chrome real) pendente. |
 | Contratos | 5/5 verdes; travas 003, 002 e 001 íntegras. |
-| Gates | `npm test` 129/129; `npm run build` ok; `npm run test:e2e` 61/61. |
-| Pendente | Chrome real, partes de 1,4 GB, memória/disco, tela estática e Baixar todas (qa-evidence §4). |
+| Gates | `npm test` 129/129; `npm run build` ok; `npm run test:e2e` 64/64. |
+| Pendente | Chrome real, partes de 1,4 GB, memória/disco, tela estática, "Baixar todas" e queda real (qa-evidence §4; T028). |
 
 ## Riscos e Decisões
 
@@ -158,6 +158,7 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 | R-008 | `loadSession` agora devolve `parts` além de `blob`; chunks gravados pela versão anterior são `Blob` soltos. | Perder gravações antigas ou quebrar os testes do `recovery-store`. | Ler os dois formatos; manter `blob` e os testes existentes verdes (research §4). |
 | R-009 | `ended` da faixa de vídeo ou `Parar` durante uma rotação. | Parte perdida ou parada duas vezes. | Regra 6 de `split-recorder.md`: `stop()` espera a rotação e é idempotente; e2e cobre `ended` no meio da rotação. |
 | R-010 | A feature depende da 002 (provedor e transcrição) e a T032 dela (Chrome real) segue manual. | Regressão não vista na transcrição de partes. | O e2e de transcrição por parte usa o mesmo mock de rede da 002; quickstart repete o roteiro com chaves reais. |
+| R-011 | **Decisão do proprietário (2026-11-02), do `sdd-converge`:** conflito entre FR-011 (encerrar a gravação se não der para guardar) e SC-003 (gravações de uma parte não mudam). | A cópia de segurança pode falhar durante a gravação ou já estar indisponível no início. | Falha **durante** a gravação: encerrar com mensagem e preservar as partes (FR-011). Indisponível **no início**: a gravação segue, com aviso visível na tela de gravação de que não há recuperação após queda (preserva SC-003 e deixa de ser silencioso). Implementado na T026. |
 
 ## Execution Notes
 
@@ -168,15 +169,16 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 | 2026-11-02 | Fase 4 (US2) | Baixar todas, sessão por parte, bloco ao vivo, nomes de TXT/SRT com a parte; 4 e2e novos. | Recuperação de várias partes (Fase 5). |
 | 2026-11-02 | Fase 5 (US3) | Recuperação de várias partes com numeração preservada; 4 e2e novos; 60 e2e no total. | Documentação e QA no Polish. |
 | 2026-11-02 | Polish | README e CLAUDE.md atualizados; e2e do modo Só Áudio (descoberto no QA); QA com a medição da lacuna (0,03 s por troca). | Validação real no Chrome. |
+| 2026-11-02 | Fase 7 (Convergência) | FR-011 "guardar": falha de escrita durante a gravação encerra com mensagem e preserva partes; sem armazenamento no início avisa na tela; e2e do aviso de saída com partes; README. Decisão R-011. | T028 (Chrome real). |
 
-**PRÓXIMO**: Rodar `sdd-converge`; depois executar o roteiro manual do `quickstart.md` no Chrome real.
+**PRÓXIMO**: T028: roteiro manual do `quickstart.md` no Chrome real; depois `sdd-converge` outra vez.
 
 ## Arquivos Principais
 
+- `src/recorder.js` (`handleStorageFailure`, `interruptionReason`)
+- `tests/e2e/parts.spec.cjs`
 - `sdd/specs/003-dividir-gravacoes-longas/qa-evidence.md`
-- `src/split-recorder.js`, `src/recording-parts.js`, `src/recovery-store.js`
-- `src/recorder.js`, `recorder.html`
-- `tests/unit/split-recording.contract.test.js` (travado)
+- `README.md`
 
 ## Cuidados para Retomada
 
@@ -189,3 +191,4 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 - Uma parte vazia (sem dados) é descartada: em e2e que dependem de ≥2 partes, espere ~1,5 s depois do indicador "Parte N" antes de parar.
 - `postSession` aponta para a sessão da parte selecionada; o botão Transcrever da lista só seleciona, a transcrição começa em "Transcrever áudio".
 - Na recuperação, `totalParts()` usa o maior índice para o nome (`_parte-02`) e o título ("Parte 2 de 3") mesmo que a parte 1 já tenha sido baixada.
+- Falha de escrita no IndexedDB durante a gravação chama `doStop()` sozinha: a tela final aparece sem clicar em Parar. O e2e simula a falha trocando `IDBObjectStore.prototype.add` por `addInitScript`.
