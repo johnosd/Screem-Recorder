@@ -118,14 +118,14 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 ### Implementation
 
-- [ ] T015 [US2] **Baixar todas** (`#btn-dl-all`) em `recorder.html`/`src/recorder.js`: percorre as partes em ordem, uma por vez, com pausa curta, sem renomear nem recodificar.
-- [ ] T016 [US2] Sessão de transcrição por parte em `src/recorder.js`: `ensurePartSession`, `selectPart`, `#post-part-title`, botão **Transcrever** de cada item que seleciona a parte e abre o painel, `isAnyProcessing()` desabilitando o início em outras partes, indicador "Transcrito por …" na lista.
-- [ ] T017 [US2] Bloco `#live-block` com a transcrição ao vivo da gravação inteira e **Baixar .txt**, sem SRT, só em gravações de várias partes; com uma parte, a transcrição ao vivo continua indo para a sessão como hoje.
-- [ ] T018 [US2] `resetPostSession`, descartar, nova gravação e importar arquivo cancelam e esvaziam todas as sessões e escondem `#parts-block` e `#live-block`.
+- [X] T015 [US2] **Baixar todas** (`#btn-dl-all`) em `recorder.html`/`src/recorder.js`: percorre as partes em ordem, uma por vez, com pausa curta, sem renomear nem recodificar.
+- [X] T016 [US2] Sessão de transcrição por parte em `src/recorder.js`: `ensurePartSession`, `selectPart`, `#post-part-title`, botão **Transcrever** de cada item que seleciona a parte e abre o painel, `isAnyProcessing()` desabilitando o início em outras partes, indicador "Transcrito por …" na lista.
+- [X] T017 [US2] Bloco `#live-block` com a transcrição ao vivo da gravação inteira e **Baixar .txt**, sem SRT, só em gravações de várias partes; com uma parte, a transcrição ao vivo continua indo para a sessão como hoje.
+- [X] T018 [US2] `resetPostSession`, descartar, nova gravação e importar arquivo cancelam e esvaziam todas as sessões e escondem `#parts-block` e `#live-block`.
 
 ### Testes da Fase
 
-- [ ] T019 [US2] `tests/e2e/parts.spec.cjs` (rede simulada dos dois provedores): transcrever a parte 1 com ElevenLabs e a parte 2 com Deepgram, cada uma com o seu texto e provedor; durante uma transcrição as outras partes não iniciam outra, mas baixam; **Baixar todas** baixa as partes na ordem com os nomes `_parte-NN.webm`; bloco ao vivo só com TXT; descartar limpa tudo.
+- [X] T019 [US2] `tests/e2e/parts.spec.cjs` (rede simulada dos dois provedores): transcrever a parte 1 com ElevenLabs e a parte 2 com Deepgram, cada uma com o seu texto e provedor; durante uma transcrição as outras partes não iniciam outra, mas baixam; **Baixar todas** baixa as partes na ordem com os nomes `_parte-NN.webm`; bloco ao vivo só com TXT; descartar limpa tudo.
 
 **Critério de Conclusão**: contratos 5/5 e travas das três features íntegras; testes da fase verdes; uma parte continua sem lista.
 
@@ -133,11 +133,11 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 **Registro da Fase**:
 
-- Status:
-- Feito:
-- Contrato:
-- Testes executados:
-- Pendências:
+- Status: Concluída (2026-11-02)
+- Feito: T015 `#btn-dl-all` (Baixar todas, uma por vez, na ordem, pausa de 400 ms); T016 sessão de transcrição por parte (`partSessions`, `ensurePartSession`, `selectPart`, `#post-part-title`, botão Transcrever que seleciona a parte, indicador "transcrito por …" e "transcrevendo…" na lista, `isOtherProcessing()` desabilitando o início em outra parte); TXT e SRT com o nome da parte selecionada; T017 `#live-block` com a transcrição ao vivo da gravação inteira e só TXT; T018 `resetPostSession` cancela e esvazia todas as sessões e esconde lista e bloco ao vivo.
+- Contrato: `npx jest tests/unit/split-recording.contract.test.js` → 5/5 verdes; trava 003 íntegra; trava 002 e 001 íntegras.
+- Testes executados: `npm test` → 129/129; `npm run build` ok; `npm run test:e2e` → 56/56 (52 + 4 novos em `parts.spec.cjs`). Um e2e (bloco ao vivo) falhou uma vez porque o teste parava logo após o indicador "Parte 2" e a parte 2 ainda estava vazia (descartada, sobrava uma parte só); corrigido no teste (espera de 1,5 s) e passou 3 vezes seguidas.
+- Pendências: Nenhuma além das pendências de Chrome real (R-001, R-003, R-004, R-005).
 
 ---
 
@@ -179,7 +179,7 @@ description: "Tasks da feature 003-dividir-gravacoes-longas"
 
 - [X] Fase 2 (módulos e contratos) concluída
 - [X] Fase 3 (US1) concluída
-- [ ] Fase 4 (US2) concluída
+- [X] Fase 4 (US2) concluída
 - [ ] Fase 5 (US3) concluída
 - [ ] Testes de contrato (5) todos verdes na suíte completa e `check-contract-tests.ps1` íntegro para 003, 002 e 001
 - [ ] `npm test` e `npm run test:e2e` executados e registrados; contagens anteriores preservadas (SC-003)

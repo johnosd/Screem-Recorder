@@ -1,7 +1,7 @@
 // Divisão de gravações longas em partes (feature 003), com captura simulada e limite reduzido pela URL.
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
-const { withExtension, CAPTURE_ARGS } = require('./helpers.cjs');
+const { withExtension, CAPTURE_ARGS, apiUrl } = require('./helpers.cjs');
 
 const record = (testInfo, scenario) => withExtension(testInfo, scenario, { args: CAPTURE_ARGS });
 // A captura falsa gera cerca de 60 a 150 KB por segundo: 150 KB fecha uma parte a cada poucos segundos.
@@ -186,5 +186,169 @@ test('limite de teste inválido na URL volta ao padrão e não divide', async ({
     await page.locator('#btn-stop').click();
     await expect(page.locator('#done-sub')).toHaveText('Arquivo .webm pronto', { timeout: 30_000 });
     await expect(page.locator('#parts-block')).toBeHidden();
+  });
+});
+
+// ---------- US2: baixar todas e transcrição por parte ----------
+const DEEPGRAM = 'https://api.deepgram.com/v1/listen';
+const deepgramBody = { results: { channels: [{ alternatives: [{
+  transcript: 'Texto do Deepgram',
+  words: [{ word: 'texto', punctuated_word: 'Texto', start: 0, end: 0.4 },
+    { word: 'do', start: 0.5, end: 0.7 }, { word: 'deepgram', punctuated_word: 'Deepgram', start: 0.8, end: 1.2 }]
+}] }] } };
+const elevenBody = { text: 'Texto da ElevenLabs', words: [
+  { type: 'word', text: 'Texto', start: 0, end: 0.4 }, { type: 'word', text: 'da', start: 0.5, end: 0.7 },
+  { type: 'word', text: 'ElevenLabs', start: 0.8, end: 1.2 }] };
+
+async function mockServices(context, { deepgram } = {}) {
+  const seen = { deepgram: 0, eleven: 0 };
+  await context.route('**/*', route => {
+    const url = route.request().url();
+    if (url.startsWith('chrome-extension://')) return route.continue();
+    if (url.startsWith(DEEPGRAM)) {
+      seen.deepgram++;
+      return deepgram ? deepgram(route) : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(deepgramBody) });
+    }
+    if (url === apiUrl) {
+      seen.eleven++;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(elevenBody) });
+    }
+    return route.abort();
+  });
+  return seen;
+}
+
+async function recordThreeParts(page, id) {
+  await open(page, id, LIMIT);
+  await startRecording(page);
+  await expect(page.locator('#part-indicator')).toHaveText('Parte 3', { timeout: 40_000 });
+  await page.waitForTimeout(1200);
+  await page.locator('#btn-stop').click();
+  await expect(page.locator('#parts-block')).toBeVisible({ timeout: 30_000 });
+  expect(await page.locator('.part-item').count()).toBeGreaterThanOrEqual(3);
+}
+
+test('cada parte guarda a própria transcrição, com provedores diferentes, e só uma roda por vez', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await mockServices(context, { deepgram: async route => {
+      await gate;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(deepgramBody) });
+    } });
+    await page.evaluate(() => chrome.storage.local.set({ deepgramKey: 'dg-e2e', elevenLabsKey: 'el-e2e' }));
+    await recordThreeParts(page, id);
+    await expect(page.locator('#post-part-title')).toContainText('Parte 1 de');
+
+    // Parte 1 com ElevenLabs.
+    await page.locator('#post-provider').selectOption('elevenlabs');
+    await page.locator('#post-start').click();
+    await expect(page.locator('#transcript-preview')).toHaveText('Texto da ElevenLabs');
+    await expect(page.locator('.part-item[data-part="1"]')).toContainText('transcrito por ElevenLabs');
+
+    // Parte 2 com Deepgram, travada no servidor simulado.
+    await page.locator('.part-item[data-part="2"] button[data-act="tx"]').click();
+    await expect(page.locator('#post-part-title')).toContainText('Parte 2 de');
+    await expect(page.locator('#transcript-preview')).toBeHidden();   // o texto da parte 1 não vaza
+    await page.locator('#post-provider').selectOption('deepgram');
+    await page.locator('#post-start').click();
+    await expect(page.locator('.part-item[data-part="2"]')).toContainText('transcrevendo');
+
+    // Enquanto isso, a parte 3 não inicia outra transcrição, mas pode ser baixada.
+    await page.locator('.part-item[data-part="3"] button[data-act="tx"]').click();
+    await expect(page.locator('#post-start')).toBeDisabled();
+    await expect(page.locator('#post-status')).toContainText('outra transcrição em andamento');
+    const file = await downloadPart(page, 3);
+    expect((await inspectWebm(file.path)).duration).toBeGreaterThan(0);
+
+    release();
+    await expect(page.locator('.part-item[data-part="2"]')).toContainText('transcrito por Deepgram');
+    await expect(page.locator('#post-start')).toBeEnabled();
+
+    // Cada parte conserva o seu resultado.
+    await page.locator('.part-item[data-part="2"] button[data-act="tx"]').click();
+    await expect(page.locator('#transcript-preview')).toHaveText('Texto do Deepgram');
+    await expect(page.locator('#transcript-origin')).toHaveText('Transcrito por Deepgram (pt-BR)');
+    await page.locator('.part-item[data-part="1"] button[data-act="tx"]').click();
+    await expect(page.locator('#transcript-preview')).toHaveText('Texto da ElevenLabs');
+
+    // O SRT e o TXT levam o nome da parte selecionada.
+    const srtPromise = page.waitForEvent('download');
+    await page.locator('#btn-dl-srt').click();
+    expect((await srtPromise).suggestedFilename()).toMatch(/_parte-01\.srt$/);
+    const txtPromise = page.waitForEvent('download');
+    await page.locator('#btn-dl-txt').click();
+    expect((await txtPromise).suggestedFilename()).toMatch(/_parte-01\.txt$/);
+  });
+});
+
+test('Baixar todas baixa as partes na ordem, sem recodificar', async ({}, testInfo) => {
+  await record(testInfo, async ({ page, id }) => {
+    await recordThreeParts(page, id);
+    const count = await page.locator('.part-item').count();
+    const names = [];
+    page.on('download', download => names.push(download.suggestedFilename()));
+    await page.locator('#btn-dl-all').click();
+    await expect.poll(() => names.length, { timeout: 15_000 }).toBe(count);
+    names.forEach((name, i) => expect(name).toMatch(new RegExp(`_parte-0${i + 1}\\.webm$`)));
+    for (let index = 1; index <= count; index++) {
+      await expect(page.locator(`.part-item[data-part="${index}"]`)).toContainText('baixada');
+    }
+  });
+});
+
+test('a transcrição ao vivo da gravação inteira fica num bloco só com TXT, sem SRT', async ({}, testInfo) => {
+  await record(testInfo, async ({ page, id }) => {
+    await page.routeWebSocket(/api\.deepgram\.com/, ws => {
+      ws.onMessage(message => {
+        if (typeof message === 'string' && JSON.parse(message).type === 'CloseStream') {
+          ws.send(JSON.stringify({ is_final: true, start: 0, duration: 1,
+            channel: { alternatives: [{ transcript: 'fala contínua da gravação inteira' }] } }));
+          ws.close();
+        }
+      });
+    });
+    await page.evaluate(() => chrome.storage.local.set({ deepgramKey: 'dg-e2e' }));
+    await open(page, id, LIMIT);
+    await page.locator('#toggle-transcript').check();
+    await startRecording(page);
+    await expect(page.locator('#part-indicator')).toHaveText('Parte 2', { timeout: 40_000 });
+    await page.waitForTimeout(1500);   // dá tempo de a parte 2 ter dados (senão seria descartada)
+    await page.locator('#btn-stop').click();
+    await expect(page.locator('#parts-block')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('#live-block')).toBeVisible();
+    await expect(page.locator('#live-preview')).toHaveText('fala contínua da gravação inteira');
+    // Nenhuma sessão de parte recebeu o texto ao vivo.
+    await expect(page.locator('#transcript-done-block')).toBeHidden();
+    await expect(page.locator('#live-block #btn-dl-srt')).toHaveCount(0);
+    const promise = page.waitForEvent('download');
+    await page.locator('#btn-dl-live').click();
+    const file = await promise;
+    expect(file.suggestedFilename()).toMatch(/^transcricao-ao-vivo_.*\.txt$/);
+    expect(await fs.readFile(await file.path(), 'utf8')).toBe('fala contínua da gravação inteira');
+  });
+});
+
+test('descartar uma gravação em partes limpa lista, sessões e bloco ao vivo; a próxima gravação curta não tem lista', async ({}, testInfo) => {
+  await record(testInfo, async ({ context, page, id }) => {
+    await mockServices(context);
+    await page.evaluate(() => chrome.storage.local.set({ deepgramKey: 'dg-e2e', elevenLabsKey: 'el-e2e' }));
+    await recordThreeParts(page, id);
+    await page.locator('.part-item[data-part="1"] button[data-act="tx"]').click();
+    await page.locator('#post-start').click();
+    await expect(page.locator('#transcript-preview')).toBeVisible();
+    await page.locator('#btn-discard').click();
+    await expect(page.locator('#v-idle')).toHaveClass(/on/);
+    await expect(page.locator('#parts-block')).toBeHidden();
+    await expect(page.locator('#live-block')).toBeHidden();
+
+    await open(page, id);
+    await startRecording(page);
+    await page.waitForTimeout(1800);
+    await page.locator('#btn-stop').click();
+    await expect(page.locator('#done-sub')).toHaveText('Arquivo .webm pronto', { timeout: 30_000 });
+    await expect(page.locator('#parts-block')).toBeHidden();
+    await expect(page.locator('#post-part-title')).toBeHidden();
+    await expect(page.locator('#transcript-done-block')).toBeHidden();
   });
 });

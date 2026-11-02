@@ -24,6 +24,9 @@ let mode = 'video';
 let splitRecorder = null;
 let parts = [];
 let finalizeQueue = Promise.resolve();
+const partSessions = new Map();   // índice da parte -> sessão de transcrição própria (DI-007)
+let selectedPart = 1;
+let unsubscribePost = null;
 let captureStream = null;
 let micStream = null;
 let audioCtx = null;
@@ -115,8 +118,9 @@ function renderPostState(state) {
   const active = isProvider(state.provider) ? state.provider : selectedProvider();
   const messages = postMessages(active);
   const { label } = PROVIDERS[active];
+  const busyElsewhere = isOtherProcessing();
   $('post-provider').disabled = processing;
-  $('post-start').disabled = processing || !state.source;
+  $('post-start').disabled = processing || !state.source || busyElsewhere;
   $('post-start').textContent = state.status === 'error' || state.status === 'cancelled' ||
     state.status === 'no-speech' ? 'Tentar novamente' : 'Transcrever áudio';
   $('post-cancel').classList.toggle('hidden', !processing);
@@ -140,7 +144,8 @@ function renderPostState(state) {
   };
   $('post-status').textContent = processing
     ? `${stages[state.stage] || 'Processando'}${state.stage === 'preparing' && Number.isFinite(state.progress) ? ` (${Math.round(state.progress * 100)}%)` : ''}.`
-    : statusText[state.status];
+    : busyElsewhere ? 'Há outra transcrição em andamento em outra parte. Aguarde ou cancele para iniciar esta.'
+      : statusText[state.status];
   const transcript = state.transcript;
   const hasText = Boolean(transcript?.text?.trim());
   $('transcript-done-block').classList.toggle('hidden', !hasText);
@@ -155,14 +160,59 @@ function renderPostState(state) {
     ? 'Após uma gravação pausada, transcreva o arquivo final para obter SRT sincronizado.' : '';
 }
 
-function resetPostSession() {
-  $('post-panel').classList.remove('hidden');
-  postSession?.cancel();
-  postSession = createPostTranscriptionSession({
+function newPostSession() {
+  return createPostTranscriptionSession({
     transcribe: async ({ media, language, provider, signal, onStage }) =>
       transcribePreRecorded({ media, language, provider, signal, onStage, key: await getProviderKey(provider) })
   });
+}
+
+function resetPostSession() {
+  $('post-panel').classList.remove('hidden');
+  $('post-part-title').classList.add('hidden');
+  $('live-block').classList.add('hidden');
+  $('parts-block').classList.add('hidden');
+  unsubscribePost?.();
+  unsubscribePost = null;
+  postSession?.cancel();
+  partSessions.forEach(session => session.cancel());
+  partSessions.clear();
+  selectedPart = 1;
+  postSession = newPostSession();
   postSession.subscribe(renderPostState);
+}
+
+// Só uma transcrição por vez em toda a janela (FR-007).
+function isOtherProcessing() {
+  return [...partSessions.values()].some(session => session !== postSession &&
+    session.getSnapshot().status === 'processing');
+}
+
+function ensurePartSession(part) {
+  let session = partSessions.get(part.index);
+  if (!session) {
+    session = newPostSession();
+    partSessions.set(part.index, session);
+    session.setSource({ blob: part.blob, name: part.name, origin: 'recorded', kind: mode });
+    session.subscribe(state => {
+      if (session === postSession) renderPostState(state);
+      else if (partSessions.size) renderPostState(postSession.getSnapshot());   // reavalia "outra em andamento"
+      renderPartsList();
+    });
+  }
+  return session;
+}
+
+function selectPart(index) {
+  const part = parts.find(entry => entry.index === index);
+  if (!part) return;
+  selectedPart = index;
+  postSession = ensurePartSession(part);
+  $('post-panel').classList.remove('hidden');
+  $('post-part-title').textContent = `Parte ${index} de ${parts.length}`;
+  $('post-part-title').classList.remove('hidden');
+  renderPostState(postSession.getSnapshot());
+  renderPartsList();
 }
 
 resetPostSession();
@@ -510,7 +560,7 @@ function renderPartsList() {
   list.textContent = '';
   for (const part of parts) {
     const item = document.createElement('div');
-    item.className = 'part-item';
+    item.className = 'part-item' + (part.index === selectedPart ? ' selected' : '');
     item.dataset.part = String(part.index);
     const info = document.createElement('div');
     info.className = 'part-info';
@@ -519,8 +569,12 @@ function renderPartsList() {
     name.textContent = part.name;
     const meta = document.createElement('span');
     meta.className = 'part-meta';
+    const snapshot = partSessions.get(part.index)?.getSnapshot();
+    const transcriptState = snapshot?.status === 'processing' ? ' · transcrevendo…'
+      : snapshot?.transcript?.origin === 'post' && isProvider(snapshot.transcript.provider)
+        ? ` · transcrito por ${PROVIDERS[snapshot.transcript.provider].label}` : '';
     meta.textContent = `${formatPartDuration(part.durationSec)} · ${(part.size / 1024 / 1024).toFixed(1)} MB` +
-      (part.downloaded ? ' · baixada' : '');
+      (part.downloaded ? ' · baixada' : '') + transcriptState;
     info.append(name, meta);
     const actions = document.createElement('div');
     actions.className = 'part-actions';
@@ -528,7 +582,11 @@ function renderPartsList() {
     download.className = 'part-btn';
     download.dataset.act = 'dl';
     download.textContent = 'Baixar';
-    actions.append(download);
+    const transcribe = document.createElement('button');
+    transcribe.className = 'part-btn';
+    transcribe.dataset.act = 'tx';
+    transcribe.textContent = 'Transcrever';
+    actions.append(download, transcribe);
     item.append(info, actions);
     list.append(item);
   }
@@ -551,6 +609,30 @@ $('parts-list').addEventListener('click', event => {
   if (!button) return;
   const index = Number(button.closest('.part-item').dataset.part);
   if (button.dataset.act === 'dl') downloadPart(index);
+  else if (button.dataset.act === 'tx') {
+    selectPart(index);
+    $('post-provider').focus();
+  }
+});
+
+// Baixar todas: uma por vez, na ordem, com pausa curta; o Chrome pode pedir permissão para vários downloads.
+$('btn-dl-all').addEventListener('click', async () => {
+  const button = $('btn-dl-all');
+  button.disabled = true;
+  try {
+    for (const part of [...parts]) {
+      downloadPart(part.index);
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$('btn-dl-live').addEventListener('click', () => {
+  const text = transcriptFull.trim();
+  if (!text) return;
+  downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }), `transcricao-ao-vivo_${timestamp()}.txt`);
 });
 
 // Fim da gravação: uma parte segue o caminho de sempre (DI-004); várias viram a lista de partes.
@@ -566,10 +648,16 @@ async function completeRecording(recorder, error) {
   if (parts.length > 1) {
     btnDl.style.display = 'none';
     btnDlMp3.style.display = 'none';
-    $('post-panel').classList.add('hidden');
-    renderPartsList();
     $('parts-block').classList.remove('hidden');
+    selectPart(1);
     doneSub.textContent = error ? `${parts.length} partes (interrompida: ${error.message})` : `${parts.length} partes prontas`;
+    // A transcrição ao vivo é única: aparece num bloco próprio, só com TXT (sem SRT por parte).
+    await transcriptClosing;
+    if (splitRecorder !== recorder) return;
+    if (transcriptFull.trim()) {
+      $('live-preview').textContent = transcriptFull.trim();
+      $('live-block').classList.remove('hidden');
+    }
     return;
   }
   recordedBlob = parts[0].blob;
@@ -809,11 +897,23 @@ document.getElementById('btn-save-key').addEventListener('click', async () => {
   }
 });
 
+// Com várias partes, os arquivos de transcrição levam o nome da parte selecionada.
+function currentPartBaseName() {
+  const part = parts.length > 1 ? parts.find(entry => entry.index === selectedPart) : null;
+  return part ? part.name.replace(/\.webm$/, '') : recordingFilename;
+}
+
+function currentPartSuffix() {
+  const base = currentPartBaseName();
+  const match = parts.length > 1 ? base.match(/_parte-\d+$/) : null;
+  return match ? match[0] : '';
+}
+
 document.getElementById('btn-dl-txt').addEventListener('click', () => {
   const transcript = postSession.getSnapshot().transcript;
   if (!transcript?.text?.trim()) return;
   downloadBlob(new Blob([transcript.text.trim()], { type: 'text/plain;charset=utf-8' }),
-    `transcricao_${timestamp()}.txt`);
+    `transcricao_${timestamp()}${currentPartSuffix()}.txt`);
 });
 
 document.getElementById('btn-dl-srt').addEventListener('click', () => {
@@ -823,10 +923,12 @@ document.getElementById('btn-dl-srt').addEventListener('click', () => {
     : validSegments(transcript?.segments) ? buildSrt(transcript.origin === 'post'
       ? groupCaptionSegments(transcript.segments) : transcript.segments) : null;
   if (!srt) return;
-  downloadBlob(new Blob([srt], { type: 'text/plain;charset=utf-8' }), `${recordingFilename}.srt`);
+  downloadBlob(new Blob([srt], { type: 'text/plain;charset=utf-8' }),
+    `${currentPartBaseName()}.srt`);
 });
 
 $('post-start').addEventListener('click', async () => {
+  if (isOtherProcessing()) return;
   try {
     await postSession.start({ language: $('post-lang').value, provider: selectedProvider(),
       confirmedExternalSend: true });

@@ -138,9 +138,9 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 
 | Área | Estado |
 | --- | --- |
-| Fases 1 a 3 | Concluídas: módulos, integração em `recorder.js`, divisão real em e2e com durações, pausa, `ended` e parada logo após troca. |
-| Fase 4 (US2) | Não iniciada: Baixar todas, transcrição por parte, bloco ao vivo. |
-| Fases 5 e Polish | Não iniciadas. |
+| Fases 1 a 4 | Concluídas: módulos, integração, lista de partes, Baixar todas, transcrição por parte com resultados separados e uma por vez, bloco ao vivo sem SRT. |
+| Fase 5 (US3) | Não iniciada: recuperação de várias partes. |
+| Polish | Não iniciada. |
 
 ## Riscos e Decisões
 
@@ -163,13 +163,14 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 | --- | --- | --- | --- |
 | 2026-11-02 | Fases 1 e 2 | Baseline registrado; `split-recorder`, `recording-parts`, `recovery-store` por parte e `webm-duration` implementados; 5/5 contratos verdes, Jest 127. | Integração em `recorder.js` (Fase 3). |
 | 2026-11-02 | Fase 3 (US1) | Gravador em partes integrado: indicador de parte, lista com Baixar, fila de remux, caminho de uma parte idêntico; 7 e2e novos; fechamento do recorder esperando o onstop (descoberta). | Baixar todas, transcrição por parte e bloco ao vivo (Fase 4). |
+| 2026-11-02 | Fase 4 (US2) | Baixar todas, sessão por parte, bloco ao vivo, nomes de TXT/SRT com a parte; 4 e2e novos. | Recuperação de várias partes (Fase 5). |
 
-**PRÓXIMO**: Fase 4 (US2): Baixar todas, sessão por parte, bloco ao vivo.
+**PRÓXIMO**: Fase 5 (US3): recuperação de várias partes em `offerRecovery`/`restoreRecording`.
 
 ## Arquivos Principais
 
 - `src/recorder.js`, `recorder.html`
-- `src/split-recorder.js`
+- `src/recovery-store.js`
 - `tests/e2e/parts.spec.cjs`
 - `sdd/specs/003-dividir-gravacoes-longas/logic/parts-ui.md`
 
@@ -181,3 +182,5 @@ Os 5 casos falham pelo motivo esperado (conferido em 2026-11-02). Stubs criados 
 - `split-recorder` chama `onPartClosed` com `{ index, blob }` já com o `type` dos pedaços; o remux e a duração acontecem em `recorder.js` (fila serial).
 - `doStop` é assíncrono: as faixas só param depois de `splitRecorder.stop()` resolver (o último pedaço pode chegar depois de o recorder ficar `inactive`). Em gravações de várias partes `#post-panel` fica escondido até a Fase 4.
 - No e2e, esperar `#part-indicator` mostrar "Parte N" é mais estável que contar segundos: a captura falsa varia de 60 a 150 KB/s.
+- Uma parte vazia (sem dados) é descartada: em e2e que dependem de ≥2 partes, espere ~1,5 s depois do indicador "Parte N" antes de parar.
+- `postSession` aponta para a sessão da parte selecionada; o botão Transcrever da lista só seleciona, a transcrição começa em "Transcrever áudio".

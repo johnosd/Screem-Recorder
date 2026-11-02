@@ -526,6 +526,12 @@
       <div id="parts-block" class="parts-block hidden">
         <div class="parts-hdr">Partes da gravação</div>
         <div id="parts-list"></div>
+        <button id="btn-dl-all" class="btn-dl-txt">↓ Baixar todas</button>
+      </div>
+      <div id="live-block" class="transcript-done-block hidden">
+        <div class="transcript-done-hdr">Transcrição ao vivo (gravação inteira)</div>
+        <div id="live-preview" class="transcript-preview"></div>
+        <button id="btn-dl-live" class="btn-dl-txt">↓ Baixar .txt</button>
       </div>
       <div id="transcript-done-block" class="transcript-done-block hidden">
         <div class="transcript-done-hdr">Transcrição</div>
@@ -536,6 +542,7 @@
       </div>
       <div id="post-panel" class="post-panel">
         <h3>Transcrição após gravação</h3>
+        <p id="post-part-title" class="hidden" role="status"></p>
         <label for="post-provider">Serviço de transcrição</label>
         <select id="post-provider"><option value="elevenlabs">ElevenLabs</option><option value="deepgram">Deepgram</option></select>
         <p id="post-notice">Para vídeos, a faixa de áudio será separada neste computador. Após clicar em Transcrever, somente o áudio será enviado a ElevenLabs.</p>
